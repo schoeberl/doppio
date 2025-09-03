@@ -1,5 +1,7 @@
 
+
 package doppio;
+import java.math.BigInteger;
 
 /**
  * Abstract base class for a port (input or output).
@@ -8,15 +10,15 @@ package doppio;
 public abstract class Port {
     public enum PortDirection { INPUT, OUTPUT }
 
-    protected int value;
+    protected BigInteger value;
     protected final int width;
 
     public Port(int width) {
         this.width = width;
-        this.value = 0;
+    this.value = BigInteger.ZERO;
     }
 
-    public int get() {
+    public BigInteger get() {
         return value;
     }
 

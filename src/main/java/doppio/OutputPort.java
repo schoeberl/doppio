@@ -1,12 +1,15 @@
 package doppio;
 
+import java.math.BigInteger;
+
 public class OutputPort extends Port {
     public OutputPort(int width) {
         super(width);
     }
 
-    public void set(int value) {
-        this.value = value & ((1 << width) - 1);
+    public void set(BigInteger value) {
+        BigInteger mask = BigInteger.ONE.shiftLeft(width).subtract(BigInteger.ONE);
+        this.value = value.and(mask);
     }
 
     @Override

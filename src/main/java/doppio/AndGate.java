@@ -1,4 +1,5 @@
 package doppio;
+import java.math.BigInteger;
 
 /**
  * Example: A simple AND gate module for demonstration.
@@ -16,6 +17,6 @@ public class AndGate extends Module {
 
     @Override
     public void eval() {
-        y.set(a.get() & b.get());
+    y.set(a.get().and(b.get()));
     }
 }

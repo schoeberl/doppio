@@ -1,4 +1,6 @@
+
 package doppio;
+import java.math.BigInteger;
 
 /**
  * Simple clock generator for simulation.
@@ -17,9 +19,9 @@ public class Clock {
     public void tick() {
         time++;
         if ((time % period) < (period / 2)) {
-            clk.set(1);
+            clk.set(BigInteger.ONE);
         } else {
-            clk.set(0);
+            clk.set(BigInteger.ZERO);
         }
     }
 }
