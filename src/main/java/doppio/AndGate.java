@@ -17,6 +17,6 @@ public class AndGate extends Module {
 
     @Override
     public void eval() {
-    y.set(a.get().and(b.get()));
+        y.setFromDut(a.getFromDut().and(b.getFromDut()));
     }
 }

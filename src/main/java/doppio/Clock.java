@@ -19,9 +19,9 @@ public class Clock {
     public void tick() {
         time++;
         if ((time % period) < (period / 2)) {
-            clk.set(BigInteger.ONE);
+            clk.setFromTestbench(BigInteger.ONE);
         } else {
-            clk.set(BigInteger.ZERO);
+            clk.setFromTestbench(BigInteger.ZERO);
         }
     }
 }

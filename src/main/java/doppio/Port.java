@@ -18,9 +18,16 @@ public abstract class Port {
     this.value = BigInteger.ZERO;
     }
 
-    public BigInteger get() {
-        return value;
-    }
+
+    /**
+     * Get value as seen by the DUT (for input ports) or as driven by the DUT (for output ports).
+     */
+    public abstract BigInteger getFromDut();
+
+    /**
+     * Get value as seen by the testbench (for output ports) or as driven by the testbench (for input ports).
+     */
+    public abstract BigInteger getFromTestbench();
 
     public int getWidth() {
         return width;

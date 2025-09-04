@@ -24,13 +24,13 @@ public class Register extends Module {
     @Override
     public void eval() {
         // Rising edge detection
-        if (prevClk.equals(BigInteger.ZERO) && clk.get().equals(BigInteger.ONE)) {
-            if (rst.get().equals(BigInteger.ONE)) {
-                q.set(BigInteger.ZERO);
+        if (prevClk.equals(BigInteger.ZERO) && clk.getFromDut().equals(BigInteger.ONE)) {
+            if (rst.getFromDut().equals(BigInteger.ONE)) {
+                q.setFromDut(BigInteger.ZERO);
             } else {
-                q.set(d.get());
+                q.setFromDut(d.getFromDut());
             }
         }
-        prevClk = clk.get();
+        prevClk = clk.getFromDut();
     }
 }
