@@ -18,5 +18,7 @@ jobs:
         distribution: 'temurin'
     - name: Setup sbt
       uses: sbt/setup-sbt@v1
+    - name: Setup Verilator
+      run: sudo apt-get install verilator
     - name: Run tests
       run: sbt test
