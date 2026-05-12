@@ -20,3 +20,7 @@ addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chiselVersion cross Cr
 libraryDependencies += "org.chipsalliance" %% "chisel" % chiselVersion
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
+
+name := "doppio"
+Compile / javacOptions ++= Seq("-Xlint:all", "-Werror")
+Test / javacOptions ++= Seq("-Xlint:all", "-Werror")

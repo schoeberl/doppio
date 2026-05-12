@@ -62,3 +62,23 @@ for (rf <- rfs) {
       test(rf) {
          d => {
 ```
+
+## Java Cycle Framework
+
+The `doppio` Java package contains the first plain-Java verification framework slice:
+
+- `@HardwareTest` discovery
+- `Sim.cycle(...)` as the read/write/tick primitive
+- `Signal` handles with read-phase checks and write-phase enforcement
+- `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
+- `InMemoryBackend` for deterministic examples and framework tests
+
+Each cycle follows the same four steps: read values from the DUT, switch to the write phase, write DUT inputs, then advance the clock by one tick.
+
+Run the Java example directly with:
+
+```sh
+sbt "runMain doppio.examples.RunExamples"
+```
+
+The Java framework smoke test is also wired into the existing ScalaTest suite, so `sbt test` covers it alongside the ChiselSim examples.
