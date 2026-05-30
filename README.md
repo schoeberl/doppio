@@ -45,17 +45,6 @@ public final class CounterTest {
 ```
 
 `Signal.set(...)` is only legal inside `cycle.write(...)`; reads are available during the read phase and after completed cycles.
-After each completed cycle, signals also expose their previous sampled value:
-
-```java
-dut.cycle();
-
-dut.expect(count.asLong() == 1, "counter advances");
-dut.expect(count.previousAsLong() == 0, "last cycle is still visible");
-dut.expect(count.rose(), "count moved from zero to non-zero");
-```
-
-Use `dut.cycle()` for an empty cycle and `dut.cycles(n)` to advance multiple empty cycles.
 
 Run the sample suite:
 

@@ -3,6 +3,9 @@ package examples
 import chisel3._
 import chisel3.util._
 import chisel3.simulator._
+import doppio.TestRunner
+import doppio.backend.{ChiselSimBackend, ChiselSimSignal}
+import doppio.examples.AccumulatorJavaTest
 import org.scalatest.funsuite.AnyFunSuite
 
 
@@ -59,6 +62,26 @@ class AccumulatorVerilogBlackBoxTest extends AnyFunSuite with ChiselSim {
       // Reset again
       dut.io.rst.poke(true.B); dut.clock.step()
       dut.io.out.expect(0.U)
+    }
+  }
+
+  test("Java cycle model drives the Accumulator Verilog black box through ChiselSim") {
+    simulate(new AccumulatorBlackBoxWrapper(8)) { dut =>
+      val signals = new java.util.HashMap[String, ChiselSimSignal]()
+      signals.put("rst", ChiselSimSignal.bool(dut.io.rst))
+      signals.put("en", ChiselSimSignal.bool(dut.io.en))
+      signals.put("in", ChiselSimSignal.uint(dut.io.in))
+      signals.put("out", ChiselSimSignal.uint(dut.io.out))
+
+      val backend = new ChiselSimBackend(dut.clock, signals)
+      val runner = new TestRunner(_ => backend)
+      val results = runner.run(classOf[AccumulatorJavaTest])
+
+      assert(results.size() == 1)
+      val result = results.get(0)
+      if (!result.passed()) {
+        fail(result.failure())
+      }
     }
   }
 }
