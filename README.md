@@ -19,8 +19,7 @@ This keeps Java tests plain and predictable, without coroutine magic.
 
 ```java
 public final class CounterTest {
-  @HardwareTest
-  public void counts(Sim dut) {
+  public void run(Sim dut) {
     Signal rst = dut.signal("rst");
     Signal count = dut.signal("count");
 
@@ -45,11 +44,23 @@ public final class CounterTest {
 ```
 
 `Signal.set(...)` is only legal inside `cycle.write(...)`; reads are available during the read phase and after completed cycles.
+Create a backend, wrap it in `Sim`, and call the test directly:
+
+```java
+Sim dut = new Sim(InMemoryBackend.withClockedCounter());
+new CounterTest().run(dut);
+```
 
 Run the sample suite:
 
 ```sh
 sbt "runMain doppio.examples.RunExamples"
+```
+
+Run the Verilog accumulator through Verilator from plain Java:
+
+```sh
+sbt "runMain doppio.examples.RunVerilogAccumulator"
 ```
 
 Run the framework self-checks:
@@ -133,11 +144,11 @@ for (rf <- rfs) {
 
 The `doppio` Java package contains the first plain-Java verification framework slice:
 
-- `@HardwareTest` discovery
 - `Sim.cycle(...)` as the read/write/tick primitive
 - `Signal` handles with read-phase checks and write-phase enforcement
 - `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
 - `InMemoryBackend` for deterministic examples and framework tests
+- `VerilatorBackend` for running simple Verilog modules from Java
 
 Each cycle follows the same four steps: read values from the DUT, switch to the write phase, write DUT inputs, then advance the clock by one tick.
 
@@ -147,4 +158,4 @@ Run the Java example directly with:
 sbt "runMain doppio.examples.RunExamples"
 ```
 
-The Java framework smoke test is also wired into the existing ScalaTest suite, so `sbt test` covers it alongside the ChiselSim examples.
+The framework is intentionally not a test runner. Use plain `main` methods, JUnit, ScalaTest, or any other test framework to create a backend, construct a `Sim`, and call your simulation code. The Java framework smoke test is also wired into the existing ScalaTest suite, so `sbt test` covers it alongside the ChiselSim examples.

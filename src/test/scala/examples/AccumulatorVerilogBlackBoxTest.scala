@@ -3,7 +3,7 @@ package examples
 import chisel3._
 import chisel3.util._
 import chisel3.simulator._
-import doppio.TestRunner
+import doppio.Sim
 import doppio.backend.{ChiselSimBackend, ChiselSimSignal}
 import doppio.examples.AccumulatorJavaTest
 import org.scalatest.funsuite.AnyFunSuite
@@ -74,14 +74,7 @@ class AccumulatorVerilogBlackBoxTest extends AnyFunSuite with ChiselSim {
       signals.put("out", ChiselSimSignal.uint(dut.io.out))
 
       val backend = new ChiselSimBackend(dut.clock, signals)
-      val runner = new TestRunner(_ => backend)
-      val results = runner.run(classOf[AccumulatorJavaTest])
-
-      assert(results.size() == 1)
-      val result = results.get(0)
-      if (!result.passed()) {
-        fail(result.failure())
-      }
+      new AccumulatorJavaTest().run(new Sim(backend))
     }
   }
 }

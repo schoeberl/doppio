@@ -3,32 +3,28 @@ package doppio.examples;
 import doppio.Signal;
 import doppio.Sim;
 
-public final class AccumulatorJavaTest {
+public final class AccumulatorTest {
     public void run(Sim dut) {
         Signal rst = dut.signal("rst");
         Signal en = dut.signal("en");
         Signal in = dut.signal("in");
         Signal out = dut.signal("out");
 
-        dut.cycle(cycle -> {
-            cycle.write(() -> {
-                rst.set(1);
-                en.set(0);
-                in.set(0);
-            });
-        });
+        dut.cycle(cycle -> cycle.write(() -> {
+            rst.set(1);
+            en.set(0);
+            in.set(0);
+        }));
 
         dut.cycle(cycle -> {
             dut.expect(out.asLong() == 0, "reset should clear accumulator");
             cycle.write(() -> rst.set(0));
         });
 
-        dut.cycle(cycle -> {
-            cycle.write(() -> {
-                en.set(1);
-                in.set(1);
-            });
-        });
+        dut.cycle(cycle -> cycle.write(() -> {
+            en.set(1);
+            in.set(1);
+        }));
         dut.expect(out.asLong() == 1, "accumulator should include first input");
 
         dut.cycle(cycle -> cycle.write(() -> in.set(2)));

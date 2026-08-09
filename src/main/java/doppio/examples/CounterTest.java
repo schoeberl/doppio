@@ -1,12 +1,10 @@
 package doppio.examples;
 
-import doppio.HardwareTest;
 import doppio.Signal;
 import doppio.Sim;
 
 public final class CounterTest {
-    @HardwareTest
-    public void resetAndCount(Sim dut) {
+    public void run(Sim dut) {
         Signal rst = dut.signal("rst");
         Signal count = dut.signal("count");
 
