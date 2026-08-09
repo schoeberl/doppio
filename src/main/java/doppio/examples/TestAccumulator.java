@@ -2,7 +2,7 @@ package doppio.examples;
 
 import java.nio.file.Path;
 import java.util.List;
-import doppio.Signal;
+import doppio.Port;
 import doppio.Sim;
 import doppio.backend.VerilatorBackend;
 import doppio.backend.VerilatorConfig;
@@ -26,17 +26,17 @@ public final class TestAccumulator {
                         VerilatorConfig.output("out")));
 
         try (VerilatorBackend backend = new VerilatorBackend(config)) {
-            runAccumulator(new Sim(backend));
+            testAccumulator(new Sim(backend));
             System.out.println("PASS TestAccumulator");
         }
     }
 
-    private static void runAccumulator(Sim dut) {
+    private static void testAccumulator(Sim dut) {
         dut.run(sim -> {
-            Signal rst = sim.signal("rst");
-            Signal en = sim.signal("en");
-            Signal in = sim.signal("in");
-            Signal out = sim.signal("out");
+            Port rst = sim.port("rst");
+            Port en = sim.port("en");
+            Port in = sim.port("in");
+            Port out = sim.port("out");
 
             rst.set(1);
             en.set(0);

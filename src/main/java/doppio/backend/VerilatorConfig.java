@@ -10,8 +10,8 @@ public record VerilatorConfig(
         List<Path> includeDirs,
         Path buildDir,
         boolean traceEnabled,
-        String clockSignal,
-        List<Signal> signals,
+        String clockPort,
+        List<Port> ports,
         String verilatorCommand) {
 
     public VerilatorConfig(
@@ -20,9 +20,9 @@ public record VerilatorConfig(
             List<Path> includeDirs,
             Path buildDir,
             boolean traceEnabled,
-            String clockSignal,
-            List<Signal> signals) {
-        this(topFile, topModule, includeDirs, buildDir, traceEnabled, clockSignal, signals, "verilator");
+            String clockPort,
+            List<Port> ports) {
+        this(topFile, topModule, includeDirs, buildDir, traceEnabled, clockPort, ports, "verilator");
     }
 
     public VerilatorConfig(
@@ -39,19 +39,19 @@ public record VerilatorConfig(
         Objects.requireNonNull(topModule, "topModule");
         Objects.requireNonNull(includeDirs, "includeDirs");
         Objects.requireNonNull(buildDir, "buildDir");
-        Objects.requireNonNull(clockSignal, "clockSignal");
-        Objects.requireNonNull(signals, "signals");
+        Objects.requireNonNull(clockPort, "clockPort");
+        Objects.requireNonNull(ports, "ports");
         Objects.requireNonNull(verilatorCommand, "verilatorCommand");
         includeDirs = List.copyOf(includeDirs);
-        signals = List.copyOf(signals);
+        ports = List.copyOf(ports);
     }
 
-    public static Signal input(String name) {
-        return new Signal(name, Direction.INPUT);
+    public static Port input(String name) {
+        return new Port(name, Direction.INPUT);
     }
 
-    public static Signal output(String name) {
-        return new Signal(name, Direction.OUTPUT);
+    public static Port output(String name) {
+        return new Port(name, Direction.OUTPUT);
     }
 
     public enum Direction {
@@ -59,8 +59,8 @@ public record VerilatorConfig(
         OUTPUT
     }
 
-    public record Signal(String name, Direction direction) {
-        public Signal {
+    public record Port(String name, Direction direction) {
+        public Port {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(direction, "direction");
         }

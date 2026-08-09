@@ -6,57 +6,57 @@ import scala.jdk.CollectionConverters._
 
 final class ChiselSimBackend(
     clock: Clock,
-    signals: java.util.Map[String, ChiselSimSignal],
+    ports: java.util.Map[String, ChiselSimPort],
     period: Int
 ) extends SimulatorBackend {
   private val clockHandle = new PeekPokeAPI.TestableClock(clock)
   private var currentTime = 0L
   private var previousValues = Map.empty[String, Long]
 
-  def this(clock: Clock, signals: java.util.Map[String, ChiselSimSignal]) =
-    this(clock, signals, 10)
+  def this(clock: Clock, ports: java.util.Map[String, ChiselSimPort]) =
+    this(clock, ports, 10)
 
   override def time(): Long = currentTime
 
-  override def read(signalPath: String): Long =
-    signal(signalPath).read()
+  override def read(portName: String): Long =
+    port(portName).read()
 
-  override def write(signalPath: String, value: Long): Unit =
-    signal(signalPath).write(value)
+  override def write(portName: String, value: Long): Unit =
+    port(portName).write(value)
 
-  override def previous(signalPath: String): Long =
-    previousValues.getOrElse(signalPath, 0L)
+  override def previous(portName: String): Long =
+    previousValues.getOrElse(portName, 0L)
 
   override def step(): Unit = {
-    previousValues = signals.asScala.view.mapValues(_.read()).toMap
+    previousValues = ports.asScala.view.mapValues(_.read()).toMap
     clockHandle.step(1, period)
     currentTime += 1
   }
 
-  private def signal(signalPath: String): ChiselSimSignal = {
-    val handle = signals.get(signalPath)
+  private def port(portName: String): ChiselSimPort = {
+    val handle = ports.get(portName)
     if (handle == null) {
-      throw new IllegalArgumentException(s"unknown ChiselSim signal: $signalPath")
+      throw new IllegalArgumentException(s"unknown ChiselSim port: $portName")
     }
     handle
   }
 }
 
-sealed trait ChiselSimSignal {
+sealed trait ChiselSimPort {
   def read(): Long
 
   def write(value: Long): Unit
 }
 
-object ChiselSimSignal {
-  def bool(signal: Bool): ChiselSimSignal =
-    new BoolSignal(signal)
+object ChiselSimPort {
+  def bool(port: Bool): ChiselSimPort =
+    new BoolPort(port)
 
-  def uint(signal: UInt): ChiselSimSignal =
-    new UIntSignal(signal)
+  def uint(port: UInt): ChiselSimPort =
+    new UIntPort(port)
 
-  private final class BoolSignal(signal: Bool) extends ChiselSimSignal {
-    private val handle = new PeekPokeAPI.TestableBool(signal)
+  private final class BoolPort(port: Bool) extends ChiselSimPort {
+    private val handle = new PeekPokeAPI.TestableBool(port)
 
     override def read(): Long =
       handle.peekValue().asBigInt.longValue
@@ -65,8 +65,8 @@ object ChiselSimSignal {
       handle.poke(value != 0)
   }
 
-  private final class UIntSignal(signal: UInt) extends ChiselSimSignal {
-    private val handle = new PeekPokeAPI.TestableUInt(signal)
+  private final class UIntPort(port: UInt) extends ChiselSimPort {
+    private val handle = new PeekPokeAPI.TestableUInt(port)
 
     override def read(): Long =
       handle.peekValue().asBigInt.longValue

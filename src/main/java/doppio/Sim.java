@@ -10,8 +10,8 @@ public final class Sim {
         this.backend = backend;
     }
 
-    public Signal signal(String path) {
-        return new Signal(this, path);
+    public Port port(String path) {
+        return new Port(this, path);
     }
 
     public long time() {
@@ -30,11 +30,11 @@ public final class Sim {
         backend.step();
     }
 
-    long readSignal(String path) {
+    long readPort(String path) {
         return backend.read(path);
     }
 
-    void setSignal(String path, long value) {
+    void setPort(String path, long value) {
         backend.write(path, value);
     }
 

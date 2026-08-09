@@ -20,8 +20,8 @@ This keeps Java tests plain and predictable, without coroutine magic.
 public final class CounterTest {
   public void run(Sim dut) {
     dut.run(sim -> {
-      Signal rst = sim.signal("rst");
-      Signal count = sim.signal("count");
+      Port rst = sim.port("rst");
+      Port count = sim.port("count");
 
       sim.expect(count.asLong() == 0, "counter starts at zero");
       rst.set(1);
@@ -41,7 +41,7 @@ public final class CounterTest {
 }
 ```
 
-`Signal.asLong()` reads the current value, `Signal.set(...)` writes an input value, and `sim.step()` advances the clock by one tick.
+`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick.
 Create a backend, wrap it in `Sim`, and call the test directly:
 
 ```java
@@ -71,7 +71,7 @@ sbt test
 
 The public Java API talks to `SimulatorBackend`. A Verilator/ChiselSim implementation should provide:
 
-- signal lookup and value access
+- port lookup and value access
 - input writes
 - one-cycle advancement in `step()`
 - optional VCD/FST tracing controls
@@ -144,7 +144,7 @@ The `doppio` Java package contains the first plain-Java verification framework s
 
 - `Sim.run(...)` for one complete multi-cycle simulation script
 - `Sim.step()` to advance the clock by one tick
-- `Signal` handles with `asLong()`, `isHigh()`, and `set(...)`
+- `Port` handles with `asLong()`, `isHigh()`, and `set(...)`
 - `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
 - `InMemoryBackend` for deterministic examples and framework tests
 - `VerilatorBackend` for running simple Verilog modules from Java

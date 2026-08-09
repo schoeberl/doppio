@@ -3,11 +3,11 @@ package doppio.backend;
 public interface SimulatorBackend {
     long time();
 
-    long read(String signalPath);
+    long read(String portName);
 
-    void write(String signalPath, long value);
+    void write(String portName, long value);
 
-    long previous(String signalPath);
+    long previous(String portName);
 
     void step();
 }

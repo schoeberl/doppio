@@ -32,18 +32,18 @@ public final class InMemoryBackend implements SimulatorBackend {
     }
 
     @Override
-    public long read(String signalPath) {
-        return current.getOrDefault(signalPath, 0L);
+    public long read(String portName) {
+        return current.getOrDefault(portName, 0L);
     }
 
     @Override
-    public void write(String signalPath, long value) {
-        current.put(signalPath, value);
+    public void write(String portName, long value) {
+        current.put(portName, value);
     }
 
     @Override
-    public long previous(String signalPath) {
-        return previous.getOrDefault(signalPath, 0L);
+    public long previous(String portName) {
+        return previous.getOrDefault(portName, 0L);
     }
 
     @Override

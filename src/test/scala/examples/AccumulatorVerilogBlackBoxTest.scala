@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.simulator._
 import doppio.Sim
-import doppio.backend.{ChiselSimBackend, ChiselSimSignal}
+import doppio.backend.{ChiselSimBackend, ChiselSimPort}
 import org.scalatest.funsuite.AnyFunSuite
 
 
@@ -66,18 +66,18 @@ class AccumulatorVerilogBlackBoxTest extends AnyFunSuite with ChiselSim {
 
   test("Java cycle model drives the Accumulator Verilog black box through ChiselSim") {
     simulate(new AccumulatorBlackBoxWrapper(8)) { dut =>
-      val signals = new java.util.HashMap[String, ChiselSimSignal]()
-      signals.put("rst", ChiselSimSignal.bool(dut.io.rst))
-      signals.put("en", ChiselSimSignal.bool(dut.io.en))
-      signals.put("in", ChiselSimSignal.uint(dut.io.in))
-      signals.put("out", ChiselSimSignal.uint(dut.io.out))
+      val ports = new java.util.HashMap[String, ChiselSimPort]()
+      ports.put("rst", ChiselSimPort.bool(dut.io.rst))
+      ports.put("en", ChiselSimPort.bool(dut.io.en))
+      ports.put("in", ChiselSimPort.uint(dut.io.in))
+      ports.put("out", ChiselSimPort.uint(dut.io.out))
 
-      val backend = new ChiselSimBackend(dut.clock, signals)
+      val backend = new ChiselSimBackend(dut.clock, ports)
       val sim = new Sim(backend)
-      val rst = sim.signal("rst")
-      val en = sim.signal("en")
-      val in = sim.signal("in")
-      val out = sim.signal("out")
+      val rst = sim.port("rst")
+      val en = sim.port("en")
+      val in = sim.port("in")
+      val out = sim.port("out")
 
       rst.set(1)
       en.set(0)

@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
     private final VerilatorConfig config;
-    private final Map<String, VerilatorConfig.Signal> signals;
+    private final Map<String, VerilatorConfig.Port> ports;
     private final Map<String, Long> previousValues = new HashMap<>();
     private final Process simulation;
     private final BufferedWriter commands;
@@ -26,7 +26,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     public VerilatorBackend(VerilatorConfig config) {
         this.config = config;
-        this.signals = indexSignals(config);
+        this.ports = indexPorts(config);
         try {
             Path executable = buildSimulation();
             simulation = new ProcessBuilder(executable.toString())
@@ -48,31 +48,31 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
     }
 
     @Override
-    public long read(String signalPath) {
-        requireSignal(signalPath);
-        return command("read " + signalPath);
+    public long read(String portName) {
+        requirePort(portName);
+        return command("read " + portName);
     }
 
     @Override
-    public void write(String signalPath, long value) {
-        VerilatorConfig.Signal signal = requireSignal(signalPath);
-        if (signal.direction() == VerilatorConfig.Direction.OUTPUT) {
-            throw new IllegalArgumentException("cannot write output signal: " + signalPath);
+    public void write(String portName, long value) {
+        VerilatorConfig.Port port = requirePort(portName);
+        if (port.direction() == VerilatorConfig.Direction.OUTPUT) {
+            throw new IllegalArgumentException("cannot write output port: " + portName);
         }
-        command("write " + signalPath + " " + Long.toUnsignedString(value));
+        command("write " + portName + " " + Long.toUnsignedString(value));
     }
 
     @Override
-    public long previous(String signalPath) {
-        requireSignal(signalPath);
-        return previousValues.getOrDefault(signalPath, 0L);
+    public long previous(String portName) {
+        requirePort(portName);
+        return previousValues.getOrDefault(portName, 0L);
     }
 
     @Override
     public void step() {
         previousValues.clear();
-        for (String signal : signals.keySet()) {
-            previousValues.put(signal, read(signal));
+        for (String port : ports.keySet()) {
+            previousValues.put(port, read(port));
         }
         command("step");
         currentTime++;
@@ -162,27 +162,27 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         }
     }
 
-    private VerilatorConfig.Signal requireSignal(String signalPath) {
-        VerilatorConfig.Signal signal = signals.get(signalPath);
-        if (signal == null) {
-            throw new IllegalArgumentException("unknown Verilator signal: " + signalPath);
+    private VerilatorConfig.Port requirePort(String portName) {
+        VerilatorConfig.Port port = ports.get(portName);
+        if (port == null) {
+            throw new IllegalArgumentException("unknown Verilator port: " + portName);
         }
-        return signal;
+        return port;
     }
 
-    private static Map<String, VerilatorConfig.Signal> indexSignals(VerilatorConfig config) {
-        Map<String, VerilatorConfig.Signal> indexed = new HashMap<>();
-        for (VerilatorConfig.Signal signal : config.signals()) {
-            VerilatorConfig.Signal previous = indexed.put(signal.name(), signal);
+    private static Map<String, VerilatorConfig.Port> indexPorts(VerilatorConfig config) {
+        Map<String, VerilatorConfig.Port> indexed = new HashMap<>();
+        for (VerilatorConfig.Port port : config.ports()) {
+            VerilatorConfig.Port previous = indexed.put(port.name(), port);
             if (previous != null) {
-                throw new IllegalArgumentException("duplicate Verilator signal: " + signal.name());
+                throw new IllegalArgumentException("duplicate Verilator port: " + port.name());
             }
         }
         if (indexed.isEmpty()) {
-            throw new IllegalArgumentException("VerilatorConfig must include at least one signal");
+            throw new IllegalArgumentException("VerilatorConfig must include at least one port");
         }
-        if (indexed.containsKey(config.clockSignal())) {
-            throw new IllegalArgumentException("clock signal is controlled by the backend: " + config.clockSignal());
+        if (indexed.containsKey(config.clockPort())) {
+            throw new IllegalArgumentException("clock port is controlled by the backend: " + config.clockPort());
         }
         return Map.copyOf(indexed);
     }
@@ -204,9 +204,9 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     private void appendReadFunction(StringBuilder source) {
         source.append("static std::uint64_t read_port(const std::string& name) {\n");
-        for (VerilatorConfig.Signal signal : config.signals()) {
-            source.append("    if (name == \"").append(cppString(signal.name())).append("\") {\n");
-            source.append("        return static_cast<std::uint64_t>(top->").append(cppIdentifier(signal.name())).append(");\n");
+        for (VerilatorConfig.Port port : config.ports()) {
+            source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
+            source.append("        return static_cast<std::uint64_t>(top->").append(cppIdentifier(port.name())).append(");\n");
             source.append("    }\n");
         }
         source.append("    return 0;\n");
@@ -215,10 +215,10 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     private void appendWriteFunction(StringBuilder source) {
         source.append("static bool write_port(const std::string& name, std::uint64_t value) {\n");
-        for (VerilatorConfig.Signal signal : config.signals()) {
-            if (signal.direction() == VerilatorConfig.Direction.INPUT) {
-                source.append("    if (name == \"").append(cppString(signal.name())).append("\") {\n");
-                source.append("        top->").append(cppIdentifier(signal.name())).append(" = value;\n");
+        for (VerilatorConfig.Port port : config.ports()) {
+            if (port.direction() == VerilatorConfig.Direction.INPUT) {
+                source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
+                source.append("        top->").append(cppIdentifier(port.name())).append(" = value;\n");
                 source.append("        top->eval();\n");
                 source.append("        return true;\n");
                 source.append("    }\n");
@@ -233,7 +233,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         source.append("    Verilated::commandArgs(argc, argv);\n");
         source.append("    ").append(topClass).append(" model;\n");
         source.append("    top = &model;\n");
-        source.append("    top->").append(cppIdentifier(config.clockSignal())).append(" = 0;\n");
+        source.append("    top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("    top->eval();\n");
         source.append("    std::string command;\n");
         source.append("    while (std::cin >> command) {\n");
@@ -248,14 +248,14 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         source.append("            if (write_port(name, value)) {\n");
         source.append("                std::cout << \"OK\" << std::endl;\n");
         source.append("            } else {\n");
-        source.append("                std::cout << \"ERR unknown or read-only signal: \" << name << std::endl;\n");
+        source.append("                std::cout << \"ERR unknown or read-only port: \" << name << std::endl;\n");
         source.append("            }\n");
         source.append("        } else if (command == \"step\") {\n");
-        source.append("            top->").append(cppIdentifier(config.clockSignal())).append(" = 0;\n");
+        source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("            top->eval();\n");
-        source.append("            top->").append(cppIdentifier(config.clockSignal())).append(" = 1;\n");
+        source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 1;\n");
         source.append("            top->eval();\n");
-        source.append("            top->").append(cppIdentifier(config.clockSignal())).append(" = 0;\n");
+        source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("            top->eval();\n");
         source.append("            std::cout << \"OK\" << std::endl;\n");
         source.append("        } else if (command == \"finish\") {\n");
@@ -281,7 +281,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         Set<Character> forbidden = Set.of('\n', '\r', '\t', '"', '\\');
         for (int i = 0; i < value.length(); i++) {
             if (forbidden.contains(value.charAt(i))) {
-                throw new IllegalArgumentException("unsupported signal name: " + value);
+                throw new IllegalArgumentException("unsupported port name: " + value);
             }
         }
         return value;
