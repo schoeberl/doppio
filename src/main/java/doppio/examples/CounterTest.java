@@ -5,24 +5,23 @@ import doppio.Sim;
 
 public final class CounterTest {
     public void run(Sim dut) {
-        Signal rst = dut.signal("rst");
-        Signal count = dut.signal("count");
+        dut.run(sim -> {
+            Signal rst = sim.signal("rst");
+            Signal count = sim.signal("count");
 
-        dut.cycle(cycle -> {
-            dut.expect(count.asLong() == 0, "counter starts at zero");
-            cycle.write(() -> rst.set(1));
+            sim.expect(count.asLong() == 0, "counter starts at zero");
+            rst.set(1);
+            sim.step();
+
+            sim.expect(count.asLong() == 0, "reset should clear count");
+            rst.set(0);
+            sim.step();
+
+            for (int i = 1; i < 4; i++) {
+                sim.step();
+            }
+
+            sim.expect(count.asLong() == 4, "counter should advance after reset");
         });
-
-        dut.cycle(cycle -> {
-            dut.expect(count.asLong() == 0, "reset should clear count");
-            cycle.write(() -> rst.set(0));
-        });
-
-        for (int i = 1; i < 4; i++) {
-            dut.cycle(cycle -> {
-            });
-        }
-
-        dut.expect(count.asLong() == 4, "counter should advance after reset");
     }
 }

@@ -21,4 +21,4 @@ jobs:
     - name: Setup Verilator
       run: sudo apt-get install verilator
     - name: Run tests
-      run: sbt test
+      run: make test

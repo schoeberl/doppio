@@ -1,10 +1,10 @@
 package doppio;
 
 import doppio.backend.SimulatorBackend;
+import java.util.function.Consumer;
 
 public final class Sim {
     private final SimulatorBackend backend;
-    private Phase phase = Phase.IDLE;
 
     public Sim(SimulatorBackend backend) {
         this.backend = backend;
@@ -22,32 +22,19 @@ public final class Sim {
         return backend;
     }
 
-    public void cycle(CycleBody body) {
-        phase = Phase.READ;
-        try {
-            body.run(new Cycle(this));
-            phase = Phase.IDLE;
-            backend.step();
-        } finally {
-            phase = Phase.IDLE;
-        }
+    public void run(Consumer<Sim> body) {
+        body.accept(this);
     }
 
-    void enterWritePhase() {
-        phase = Phase.WRITE;
+    public void step() {
+        backend.step();
     }
 
     long readSignal(String path) {
-        if (phase == Phase.WRITE) {
-            throw new IllegalStateException("reads are not allowed after cycle.write(...) begins");
-        }
         return backend.read(path);
     }
 
-    void writeSignal(String path, long value) {
-        if (phase != Phase.WRITE) {
-            throw new IllegalStateException("writes are only allowed inside cycle.write(...)");
-        }
+    void setSignal(String path, long value) {
         backend.write(path, value);
     }
 
@@ -55,11 +42,5 @@ public final class Sim {
         if (!condition) {
             throw new AssertionError(message + " at t=" + time());
         }
-    }
-
-    private enum Phase {
-        IDLE,
-        READ,
-        WRITE
     }
 }

@@ -22,7 +22,7 @@ public final class Signal {
     }
 
     public void set(long value) {
-        sim.writeSignal(path, value);
+        sim.setSignal(path, value);
     }
 
     @Override

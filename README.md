@@ -6,12 +6,11 @@ It shall replace the cocotb/PyUVM simulation environment.
 
 The goal is a cocotb-like programming model in Java, with ChiselSim and Verilator as backend simulation machinery.
 
-The core simulation model is deliberately simple. Each cycle does exactly this:
+The core simulation model is deliberately simple:
 
 1. read values from the DUT
-2. switch to a writing phase
-3. write DUT input ports
-4. advance the clock by one tick
+2. set DUT input ports
+3. advance the clock by one tick
 
 This keeps Java tests plain and predictable, without coroutine magic.
 
@@ -20,30 +19,29 @@ This keeps Java tests plain and predictable, without coroutine magic.
 ```java
 public final class CounterTest {
   public void run(Sim dut) {
-    Signal rst = dut.signal("rst");
-    Signal count = dut.signal("count");
+    dut.run(sim -> {
+      Signal rst = sim.signal("rst");
+      Signal count = sim.signal("count");
 
-    dut.cycle(cycle -> {
-      dut.expect(count.asLong() == 0, "counter starts at zero");
-      cycle.write(() -> rst.set(1));
+      sim.expect(count.asLong() == 0, "counter starts at zero");
+      rst.set(1);
+      sim.step();
+
+      sim.expect(count.asLong() == 0, "reset should clear count");
+      rst.set(0);
+      sim.step();
+
+      for (int i = 1; i < 4; i++) {
+        sim.step();
+      }
+
+      sim.expect(count.asLong() == 4, "counter should advance");
     });
-
-    dut.cycle(cycle -> {
-      dut.expect(count.asLong() == 0, "reset should clear count");
-      cycle.write(() -> rst.set(0));
-    });
-
-    for (int i = 1; i < 4; i++) {
-      dut.cycle(cycle -> {
-      });
-    }
-
-    dut.expect(count.asLong() == 4, "counter should advance");
   }
 }
 ```
 
-`Signal.set(...)` is only legal inside `cycle.write(...)`; reads are available during the read phase and after completed cycles.
+`Signal.asLong()` reads the current value, `Signal.set(...)` writes an input value, and `sim.step()` advances the clock by one tick.
 Create a backend, wrap it in `Sim`, and call the test directly:
 
 ```java
@@ -74,7 +72,7 @@ sbt test
 The public Java API talks to `SimulatorBackend`. A Verilator/ChiselSim implementation should provide:
 
 - signal lookup and value access
-- input writes during the framework write phase
+- input writes
 - one-cycle advancement in `step()`
 - optional VCD/FST tracing controls
 
@@ -144,13 +142,14 @@ for (rf <- rfs) {
 
 The `doppio` Java package contains the first plain-Java verification framework slice:
 
-- `Sim.cycle(...)` as the read/write/tick primitive
-- `Signal` handles with read-phase checks and write-phase enforcement
+- `Sim.run(...)` for one complete multi-cycle simulation script
+- `Sim.step()` to advance the clock by one tick
+- `Signal` handles with `asLong()`, `isHigh()`, and `set(...)`
 - `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
 - `InMemoryBackend` for deterministic examples and framework tests
 - `VerilatorBackend` for running simple Verilog modules from Java
 
-Each cycle follows the same four steps: read values from the DUT, switch to the write phase, write DUT inputs, then advance the clock by one tick.
+Each step follows the same order: read values from the DUT, set DUT inputs, then advance the clock by one tick.
 
 Run the Java example directly with:
 
