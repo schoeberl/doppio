@@ -58,7 +58,7 @@ sbt "runMain doppio.examples.RunExamples"
 Run the Verilog accumulator through Verilator from plain Java:
 
 ```sh
-sbt "runMain doppio.examples.RunVerilogAccumulator"
+sbt "runMain doppio.examples.TestAccumulator"
 ```
 
 Run the framework self-checks:

@@ -5,7 +5,6 @@ import chisel3.util._
 import chisel3.simulator._
 import doppio.Sim
 import doppio.backend.{ChiselSimBackend, ChiselSimSignal}
-import doppio.examples.AccumulatorTest
 import org.scalatest.funsuite.AnyFunSuite
 
 
@@ -74,7 +73,42 @@ class AccumulatorVerilogBlackBoxTest extends AnyFunSuite with ChiselSim {
       signals.put("out", ChiselSimSignal.uint(dut.io.out))
 
       val backend = new ChiselSimBackend(dut.clock, signals)
-      new AccumulatorTest().run(new Sim(backend))
+      val sim = new Sim(backend)
+      val rst = sim.signal("rst")
+      val en = sim.signal("en")
+      val in = sim.signal("in")
+      val out = sim.signal("out")
+
+      rst.set(1)
+      en.set(0)
+      in.set(0)
+      sim.step()
+
+      sim.expect(out.asLong() == 0, "reset should clear accumulator")
+      rst.set(0)
+      sim.step()
+
+      en.set(1)
+      in.set(1)
+      sim.step()
+      sim.expect(out.asLong() == 1, "accumulator should include first input")
+
+      in.set(2)
+      sim.step()
+      sim.expect(out.asLong() == 3, "accumulator should include second input")
+
+      in.set(3)
+      sim.step()
+      sim.expect(out.asLong() == 6, "accumulator should include third input")
+
+      en.set(0)
+      in.set(7)
+      sim.step()
+      sim.expect(out.asLong() == 6, "disabled accumulator should hold its value")
+
+      rst.set(1)
+      sim.step()
+      sim.expect(out.asLong() == 0, "reset should clear accumulator again")
     }
   }
 }

@@ -1,10 +1,37 @@
 package doppio.examples;
 
+import java.nio.file.Path;
+import java.util.List;
 import doppio.Signal;
 import doppio.Sim;
+import doppio.backend.VerilatorBackend;
+import doppio.backend.VerilatorConfig;
 
-public final class AccumulatorTest {
-    public void run(Sim dut) {
+public final class TestAccumulator {
+    private TestAccumulator() {
+    }
+
+    public static void main(String[] args) {
+        VerilatorConfig config = new VerilatorConfig(
+                Path.of("src/verilog/accumulator.v"),
+                "accumulator",
+                List.of(Path.of("src/verilog")),
+                Path.of("build/doppio-verilator/accumulator"),
+                false,
+                "clk",
+                List.of(
+                        VerilatorConfig.input("rst"),
+                        VerilatorConfig.input("en"),
+                        VerilatorConfig.input("in"),
+                        VerilatorConfig.output("out")));
+
+        try (VerilatorBackend backend = new VerilatorBackend(config)) {
+            runAccumulator(new Sim(backend));
+            System.out.println("PASS TestAccumulator");
+        }
+    }
+
+    private static void runAccumulator(Sim dut) {
         dut.run(sim -> {
             Signal rst = sim.signal("rst");
             Signal en = sim.signal("en");

@@ -5,7 +5,7 @@ compile:
 
 examples:
 	sbt "runMain doppio.examples.RunExamples"
-	sbt "runMain doppio.examples.RunVerilogAccumulator"
+	sbt "runMain doppio.examples.TestAccumulator"
 
 test: compile examples
 	sbt test
