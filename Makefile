@@ -6,6 +6,10 @@ compile:
 examples:
 	sbt "runMain doppio.examples.RunExamples"
 	sbt "runMain doppio.examples.TestAccumulator"
+	sbt "runMain doppio.examples.TestTinyAlu"
 
 test: compile examples
 	sbt test
+
+tinyalu:
+	sbt "runMain doppio.examples.TestTinyAlu"
