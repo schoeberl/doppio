@@ -41,7 +41,7 @@ public final class CounterTest {
 }
 ```
 
-`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick. Calling `set(...)` implicitly enters the drive phase; reading a port during the drive phase is illegal until `sim.step()` returns the simulation to observe phase. Use `sim.drive()` when you want to make the phase change explicit before a group of writes.
+`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick. Calling `set(...)` implicitly enters the drive phase; reading a port during the drive phase is illegal until `sim.step()` returns the simulation to observe phase. Use `sim.drive()` when you want to make the phase change explicit before a group of writes. Use `sim.fork(...)` inside `sim.run(...)` to start concurrent Java test agents; all active agents synchronize when the simulation switches from observe to drive and again when `step()` advances the clock.
 Create a backend, wrap it in `Sim`, and call the test directly:
 
 ```java
@@ -143,6 +143,7 @@ for (rf <- rfs) {
 The `doppio` Java package contains the first plain-Java verification framework slice:
 
 - `Sim.run(...)` for one complete multi-cycle simulation script
+- `Sim.fork(...)` for concurrent Java test agents inside a simulation script
 - `Sim.drive(...)` to enter the drive phase explicitly
 - `Sim.step()` to advance the clock by one tick
 - `Port` handles with `asLong()`, `isHigh()`, and `set(...)`
@@ -150,7 +151,7 @@ The `doppio` Java package contains the first plain-Java verification framework s
 - `InMemoryBackend` for deterministic examples and framework tests
 - `VerilatorBackend` for running simple Verilog modules from Java
 
-Each step follows the same order: observe DUT ports, drive DUT inputs, then advance the clock by one tick.
+Each step follows the same order: observe DUT ports, drive DUT inputs, then advance the clock by one tick. With forked agents, `drive()` and `step()` are barriers across all active agents, so monitors and drivers see the same phase transitions. A passive agent can call `step()` directly after observing; that marks it as having no drives for the current cycle.
 
 Run the Java example directly with:
 
