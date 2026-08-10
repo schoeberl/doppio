@@ -6,11 +6,11 @@ It shall replace the cocotb/PyUVM simulation environment.
 
 The goal is a cocotb-like programming model in Java, with ChiselSim and Verilator as backend simulation machinery.
 
-The core simulation model is deliberately simple:
+The core simulation model is deliberately simple and has two phases:
 
-1. read values from the DUT
-2. set DUT input ports
-3. advance the clock by one tick
+1. observe phase: read values from the DUT
+2. drive phase: set DUT input ports
+3. `step()`: advance the clock by one tick and return to observe phase
 
 This keeps Java tests plain and predictable, without coroutine magic.
 
@@ -41,7 +41,7 @@ public final class CounterTest {
 }
 ```
 
-`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick.
+`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick. Calling `set(...)` implicitly enters the drive phase; reading a port during the drive phase is illegal until `sim.step()` returns the simulation to observe phase. Use `sim.drive()` when you want to make the phase change explicit before a group of writes.
 Create a backend, wrap it in `Sim`, and call the test directly:
 
 ```java
@@ -143,13 +143,14 @@ for (rf <- rfs) {
 The `doppio` Java package contains the first plain-Java verification framework slice:
 
 - `Sim.run(...)` for one complete multi-cycle simulation script
+- `Sim.drive(...)` to enter the drive phase explicitly
 - `Sim.step()` to advance the clock by one tick
 - `Port` handles with `asLong()`, `isHigh()`, and `set(...)`
 - `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
 - `InMemoryBackend` for deterministic examples and framework tests
 - `VerilatorBackend` for running simple Verilog modules from Java
 
-Each step follows the same order: read values from the DUT, set DUT inputs, then advance the clock by one tick.
+Each step follows the same order: observe DUT ports, drive DUT inputs, then advance the clock by one tick.
 
 Run the Java example directly with:
 

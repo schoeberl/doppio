@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 public final class Sim {
     private final SimulatorBackend backend;
+    private Phase phase = Phase.OBSERVE;
 
     public Sim(SimulatorBackend backend) {
         this.backend = backend;
@@ -23,18 +24,33 @@ public final class Sim {
     }
 
     public void run(Consumer<Sim> body) {
+        phase = Phase.OBSERVE;
         body.accept(this);
+    }
+
+    public void drive() {
+        phase = Phase.DRIVE;
+    }
+
+    public void drive(Runnable drives) {
+        drive();
+        drives.run();
     }
 
     public void step() {
         backend.step();
+        phase = Phase.OBSERVE;
     }
 
     long readPort(String path) {
+        if (phase == Phase.DRIVE) {
+            throw new IllegalStateException("port reads are not allowed during the drive phase");
+        }
         return backend.read(path);
     }
 
     void setPort(String path, long value) {
+        drive();
         backend.write(path, value);
     }
 
@@ -42,5 +58,10 @@ public final class Sim {
         if (!condition) {
             throw new AssertionError(message + " at t=" + time());
         }
+    }
+
+    private enum Phase {
+        OBSERVE,
+        DRIVE
     }
 }
