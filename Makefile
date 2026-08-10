@@ -7,9 +7,13 @@ examples:
 	sbt "runMain doppio.examples.RunExamples"
 	sbt "runMain doppio.examples.TestAccumulator"
 	sbt "runMain doppio.examples.TestTinyAlu"
+	sbt "runMain doppio.examples.TestConcurrentFifo"
 
 test: compile examples
 	sbt test
 
 tinyalu:
 	sbt "runMain doppio.examples.TestTinyAlu"
+
+fifo:
+	sbt "runMain doppio.examples.TestConcurrentFifo"

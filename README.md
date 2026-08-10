@@ -61,6 +61,12 @@ Run the Verilog accumulator through Verilator from plain Java:
 sbt "runMain doppio.examples.TestAccumulator"
 ```
 
+Run the concurrent FIFO example, with separate Java producer and consumer agents:
+
+```sh
+sbt "runMain doppio.examples.TestConcurrentFifo"
+```
+
 Run the framework self-checks:
 
 ```sh
