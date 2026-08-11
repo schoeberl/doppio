@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
     private final VerilatorConfig config;
-    private final Map<String, VerilatorConfig.Port> ports;
+    private final Map<String, VerilatorConfig.ConfigPort> ports;
     private final Map<String, Long> previousValues = new HashMap<>();
     private final Process simulation;
     private final BufferedWriter commands;
@@ -55,7 +55,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     @Override
     public void write(String portName, long value) {
-        VerilatorConfig.Port port = requirePort(portName);
+        VerilatorConfig.ConfigPort port = requirePort(portName);
         if (port.direction() == VerilatorConfig.Direction.OUTPUT) {
             throw new IllegalArgumentException("cannot write output port: " + portName);
         }
@@ -162,18 +162,18 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         }
     }
 
-    private VerilatorConfig.Port requirePort(String portName) {
-        VerilatorConfig.Port port = ports.get(portName);
+    private VerilatorConfig.ConfigPort requirePort(String portName) {
+        VerilatorConfig.ConfigPort port = ports.get(portName);
         if (port == null) {
             throw new IllegalArgumentException("unknown Verilator port: " + portName);
         }
         return port;
     }
 
-    private static Map<String, VerilatorConfig.Port> indexPorts(VerilatorConfig config) {
-        Map<String, VerilatorConfig.Port> indexed = new HashMap<>();
-        for (VerilatorConfig.Port port : config.ports()) {
-            VerilatorConfig.Port previous = indexed.put(port.name(), port);
+    private static Map<String, VerilatorConfig.ConfigPort> indexPorts(VerilatorConfig config) {
+        Map<String, VerilatorConfig.ConfigPort> indexed = new HashMap<>();
+        for (VerilatorConfig.ConfigPort port : config.ports()) {
+            VerilatorConfig.ConfigPort previous = indexed.put(port.name(), port);
             if (previous != null) {
                 throw new IllegalArgumentException("duplicate Verilator port: " + port.name());
             }
@@ -204,7 +204,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     private void appendReadFunction(StringBuilder source) {
         source.append("static std::uint64_t read_port(const std::string& name) {\n");
-        for (VerilatorConfig.Port port : config.ports()) {
+        for (VerilatorConfig.ConfigPort port : config.ports()) {
             source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
             source.append("        return static_cast<std::uint64_t>(top->").append(cppIdentifier(port.name())).append(");\n");
             source.append("    }\n");
@@ -215,7 +215,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     private void appendWriteFunction(StringBuilder source) {
         source.append("static bool write_port(const std::string& name, std::uint64_t value) {\n");
-        for (VerilatorConfig.Port port : config.ports()) {
+        for (VerilatorConfig.ConfigPort port : config.ports()) {
             if (port.direction() == VerilatorConfig.Direction.INPUT) {
                 source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
                 source.append("        top->").append(cppIdentifier(port.name())).append(" = value;\n");

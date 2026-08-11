@@ -1,13 +1,14 @@
 package doppio.examples;
 
-import doppio.Port;
+import doppio.InPort;
+import doppio.OutPort;
 import doppio.Sim;
 
 public final class CounterTest {
     public void run(Sim dut) {
         dut.run(sim -> {
-            Port rst = sim.port("rst");
-            Port count = sim.port("count");
+            InPort rst = sim.inPort("rst");
+            OutPort count = sim.outPort("count");
 
             sim.expect(count.asLong() == 0, "counter starts at zero");
             rst.set(1);

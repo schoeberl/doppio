@@ -74,10 +74,10 @@ class AccumulatorVerilogBlackBoxTest extends AnyFunSuite with ChiselSim {
 
       val backend = new ChiselSimBackend(dut.clock, ports)
       val sim = new Sim(backend)
-      val rst = sim.port("rst")
-      val en = sim.port("en")
-      val in = sim.port("in")
-      val out = sim.port("out")
+      val rst = sim.inPort("rst")
+      val en = sim.inPort("en")
+      val in = sim.inPort("in")
+      val out = sim.outPort("out")
 
       rst.set(1)
       en.set(0)

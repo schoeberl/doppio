@@ -5,7 +5,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import doppio.Port;
+import doppio.InPort;
+import doppio.OutPort;
 import doppio.Sim;
 import doppio.backend.VerilatorBackend;
 import doppio.backend.VerilatorConfig;
@@ -127,23 +128,23 @@ public final class TestTinyAlu {
 
     private static final class TinyAluBfm {
         private final Sim sim;
-        private final Port a;
-        private final Port b;
-        private final Port op;
-        private final Port resetN;
-        private final Port start;
-        private final Port done;
-        private final Port result;
+        private final InPort a;
+        private final InPort b;
+        private final InPort op;
+        private final InPort resetN;
+        private final InPort start;
+        private final OutPort done;
+        private final OutPort result;
 
         private TinyAluBfm(Sim sim) {
             this.sim = sim;
-            a = sim.port("A");
-            b = sim.port("B");
-            op = sim.port("op");
-            resetN = sim.port("reset_n");
-            start = sim.port("start");
-            done = sim.port("done");
-            result = sim.port("result");
+            a = sim.inPort("A");
+            b = sim.inPort("B");
+            op = sim.inPort("op");
+            resetN = sim.inPort("reset_n");
+            start = sim.inPort("start");
+            done = sim.outPort("done");
+            result = sim.outPort("result");
         }
 
         private void reset() {

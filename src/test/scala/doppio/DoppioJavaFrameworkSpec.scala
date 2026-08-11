@@ -15,46 +15,50 @@ final class DoppioJavaFrameworkSpec extends AnyFlatSpec {
   it should "enter drive phase explicitly and return to observe on step" in {
     val backend = new InMemoryBackend(_ => ())
     val dut = new Sim(backend)
-    val value = dut.port("value")
+    val valueIn = dut.inPort("value")
+    val valueOut = dut.outPort("value")
 
     dut.drive()
-    value.set(42)
+    valueIn.set(42)
     assertThrows[IllegalStateException] {
-      value.asLong()
+      valueOut.asLong()
     }
 
     dut.step()
-    assert(value.asLong() == 42)
+    assert(valueOut.asLong() == 42)
   }
 
   it should "enter drive phase implicitly on set" in {
     val backend = new InMemoryBackend(_ => ())
     val dut = new Sim(backend)
-    val value = dut.port("value")
+    val valueIn = dut.inPort("value")
+    val valueOut = dut.outPort("value")
 
-    value.set(7)
+    valueIn.set(7)
     assertThrows[IllegalStateException] {
-      value.asLong()
+      valueOut.asLong()
     }
 
     dut.step()
-    assert(value.asLong() == 7)
+    assert(valueOut.asLong() == 7)
   }
 
   it should "allow grouped writes with drive" in {
     val backend = new InMemoryBackend(_ => ())
     val dut = new Sim(backend)
-    val a = dut.port("a")
-    val b = dut.port("b")
+    val aIn = dut.inPort("a")
+    val bIn = dut.inPort("b")
+    val aOut = dut.outPort("a")
+    val bOut = dut.outPort("b")
 
     dut.drive(() => {
-      a.set(1)
-      b.set(2)
+      aIn.set(1)
+      bIn.set(2)
     })
 
     dut.step()
-    assert(a.asLong() == 1)
-    assert(b.asLong() == 2)
+    assert(aOut.asLong() == 1)
+    assert(bOut.asLong() == 2)
   }
 
   it should "synchronize forked agents at drive and step" in {
@@ -63,9 +67,9 @@ final class DoppioJavaFrameworkSpec extends AnyFlatSpec {
     val events = new ConcurrentLinkedQueue[String]()
 
     dut.run(sim => {
-      val ticks = sim.port("ticks")
-      val a = sim.port("a")
-      val b = sim.port("b")
+      val ticks = sim.outPort("ticks")
+      val a = sim.inPort("a")
+      val b = sim.inPort("b")
 
       sim.fork(() => {
         events.add("fork observed " + ticks.asLong())
@@ -101,8 +105,8 @@ final class DoppioJavaFrameworkSpec extends AnyFlatSpec {
     val events = new ConcurrentLinkedQueue[String]()
 
     dut.run(sim => {
-      val ticks = sim.port("ticks")
-      val value = sim.port("value")
+      val ticks = sim.outPort("ticks")
+      val value = sim.inPort("value")
 
       sim.fork(() => {
         events.add("monitor observed " + ticks.asLong())

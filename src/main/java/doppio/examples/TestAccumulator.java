@@ -2,7 +2,8 @@ package doppio.examples;
 
 import java.nio.file.Path;
 import java.util.List;
-import doppio.Port;
+import doppio.InPort;
+import doppio.OutPort;
 import doppio.Sim;
 import doppio.backend.VerilatorBackend;
 import doppio.backend.VerilatorConfig;
@@ -33,10 +34,10 @@ public final class TestAccumulator {
 
     private static void testAccumulator(Sim dut) {
         dut.run(sim -> {
-            Port rst = sim.port("rst");
-            Port en = sim.port("en");
-            Port in = sim.port("in");
-            Port out = sim.port("out");
+            InPort rst = sim.inPort("rst");
+            InPort en = sim.inPort("en");
+            InPort in = sim.inPort("in");
+            OutPort out = sim.outPort("out");
 
             rst.set(1);
             en.set(0);

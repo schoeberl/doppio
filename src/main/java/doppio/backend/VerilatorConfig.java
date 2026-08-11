@@ -11,7 +11,7 @@ public record VerilatorConfig(
         Path buildDir,
         boolean traceEnabled,
         String clockPort,
-        List<Port> ports,
+        List<ConfigPort> ports,
         String verilatorCommand) {
 
     public VerilatorConfig(
@@ -21,7 +21,7 @@ public record VerilatorConfig(
             Path buildDir,
             boolean traceEnabled,
             String clockPort,
-            List<Port> ports) {
+            List<ConfigPort> ports) {
         this(topFile, topModule, includeDirs, buildDir, traceEnabled, clockPort, ports, "verilator");
     }
 
@@ -46,12 +46,12 @@ public record VerilatorConfig(
         ports = List.copyOf(ports);
     }
 
-    public static Port input(String name) {
-        return new Port(name, Direction.INPUT);
+    public static InPort input(String name) {
+        return new InPort(name);
     }
 
-    public static Port output(String name) {
-        return new Port(name, Direction.OUTPUT);
+    public static OutPort output(String name) {
+        return new OutPort(name);
     }
 
     public enum Direction {
@@ -59,10 +59,31 @@ public record VerilatorConfig(
         OUTPUT
     }
 
-    public record Port(String name, Direction direction) {
-        public Port {
+    public interface ConfigPort {
+        String name();
+
+        Direction direction();
+    }
+
+    public record InPort(String name) implements ConfigPort {
+        public InPort {
             Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(direction, "direction");
+        }
+
+        @Override
+        public Direction direction() {
+            return Direction.INPUT;
+        }
+    }
+
+    public record OutPort(String name) implements ConfigPort {
+        public OutPort {
+            Objects.requireNonNull(name, "name");
+        }
+
+        @Override
+        public Direction direction() {
+            return Direction.OUTPUT;
         }
     }
 }

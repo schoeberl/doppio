@@ -20,8 +20,8 @@ This keeps Java tests plain and predictable, without coroutine magic.
 public final class CounterTest {
   public void run(Sim dut) {
     dut.run(sim -> {
-      Port rst = sim.port("rst");
-      Port count = sim.port("count");
+      InPort rst = sim.inPort("rst");
+      OutPort count = sim.outPort("count");
 
       sim.expect(count.asLong() == 0, "counter starts at zero");
       rst.set(1);
@@ -41,7 +41,7 @@ public final class CounterTest {
 }
 ```
 
-`Port.asLong()` reads the current value, `Port.set(...)` writes an input value, and `sim.step()` advances the clock by one tick. Calling `set(...)` implicitly enters the drive phase; reading a port during the drive phase is illegal until `sim.step()` returns the simulation to observe phase. Use `sim.drive()` when you want to make the phase change explicit before a group of writes. Use `sim.fork(...)` inside `sim.run(...)` to start concurrent Java test agents; all active agents synchronize when the simulation switches from observe to drive and again when `step()` advances the clock.
+`OutPort.asLong()` reads the current value, `InPort.set(...)` writes an input value, and `sim.step()` advances the clock by one tick. Calling `set(...)` implicitly enters the drive phase; reading an output during the drive phase is illegal until `sim.step()` returns the simulation to observe phase. Use `sim.drive()` when you want to make the phase change explicit before a group of writes. Use `sim.fork(...)` inside `sim.run(...)` to start concurrent Java test agents; all active agents synchronize when the simulation switches from observe to drive and again when `step()` advances the clock.
 Create a backend, wrap it in `Sim`, and call the test directly:
 
 ```java
@@ -59,6 +59,12 @@ Run the Verilog accumulator through Verilator from plain Java:
 
 ```sh
 sbt "runMain doppio.examples.TestAccumulator"
+```
+
+Run the same accumulator test with a typed Java helper class around the DUT interface:
+
+```sh
+sbt "runMain doppio.examples.TestAccumulatorWithInterface"
 ```
 
 Run the concurrent FIFO example, with separate Java producer and consumer agents:
@@ -152,7 +158,8 @@ The `doppio` Java package contains the first plain-Java verification framework s
 - `Sim.fork(...)` for concurrent Java test agents inside a simulation script
 - `Sim.drive(...)` to enter the drive phase explicitly
 - `Sim.step()` to advance the clock by one tick
-- `Port` handles with `asLong()`, `isHigh()`, and `set(...)`
+- `InPort` handles with `set(...)` for DUT inputs
+- `OutPort` handles with `asLong()` and `isHigh()` for DUT outputs
 - `SimulatorBackend` as the boundary for ChiselSim/Verilator integrations
 - `InMemoryBackend` for deterministic examples and framework tests
 - `VerilatorBackend` for running simple Verilog modules from Java

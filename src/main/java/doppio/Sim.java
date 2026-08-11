@@ -20,8 +20,12 @@ public final class Sim {
         this.backend = backend;
     }
 
-    public Port port(String path) {
-        return new Port(this, path);
+    public InPort inPort(String path) {
+        return new InPort(this, path);
+    }
+
+    public OutPort outPort(String path) {
+        return new OutPort(this, path);
     }
 
     public synchronized long time() {

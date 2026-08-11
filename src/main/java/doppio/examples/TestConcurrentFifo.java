@@ -2,7 +2,8 @@ package doppio.examples;
 
 import java.nio.file.Path;
 import java.util.List;
-import doppio.Port;
+import doppio.InPort;
+import doppio.OutPort;
 import doppio.Sim;
 import doppio.backend.VerilatorBackend;
 import doppio.backend.VerilatorConfig;
@@ -49,11 +50,11 @@ public final class TestConcurrentFifo {
     }
 
     private static void reset(Sim sim) {
-        Port rst = sim.port("rst");
-        Port wrEn = sim.port("wr_en");
-        Port rdEn = sim.port("rd_en");
-        Port din = sim.port("din");
-        Port empty = sim.port("empty");
+        InPort rst = sim.inPort("rst");
+        InPort wrEn = sim.inPort("wr_en");
+        InPort rdEn = sim.inPort("rd_en");
+        InPort din = sim.inPort("din");
+        OutPort empty = sim.outPort("empty");
 
         rst.set(1);
         wrEn.set(0);
@@ -68,9 +69,9 @@ public final class TestConcurrentFifo {
     }
 
     private static void produce(Sim sim) {
-        Port wrEn = sim.port("wr_en");
-        Port din = sim.port("din");
-        Port full = sim.port("full");
+        InPort wrEn = sim.inPort("wr_en");
+        InPort din = sim.inPort("din");
+        OutPort full = sim.outPort("full");
 
         for (int value : DATA) {
             boolean written = false;
@@ -93,9 +94,9 @@ public final class TestConcurrentFifo {
     }
 
     private static void consume(Sim sim) {
-        Port rdEn = sim.port("rd_en");
-        Port empty = sim.port("empty");
-        Port dout = sim.port("dout");
+        InPort rdEn = sim.inPort("rd_en");
+        OutPort empty = sim.outPort("empty");
+        OutPort dout = sim.outPort("dout");
 
         for (int i = 0; i < 6; i++) {
             rdEn.set(0);
