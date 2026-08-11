@@ -67,6 +67,12 @@ Run the same accumulator test with a typed Java helper class around the DUT inte
 sbt "runMain doppio.examples.TestAccumulatorWithInterface"
 ```
 
+Run the accumulator test through the Scala binding:
+
+```sh
+sbt "runMain doppio.examples.TestAccumulatorScalaBinding"
+```
+
 Run the concurrent FIFO example, with separate Java producer and consumer agents:
 
 ```sh
@@ -187,3 +193,27 @@ sbt "runMain doppio.examples.RunExamples"
 ```
 
 The framework is intentionally not a test runner. Use plain `main` methods, JUnit, ScalaTest, or any other test framework to create a backend, construct a `Sim`, and call your simulation code. The Java framework smoke test is also wired into the existing ScalaTest suite, so `sbt test` covers it alongside the ChiselSim examples.
+
+## Scala Binding
+
+The `doppio.scaladsl` package adds a thin Scala layer on top of the Java API:
+
+```scala
+import doppio.scaladsl._
+
+dut.runScala { sim =>
+  val rst = sim.in("rst")
+  val en = sim.in("en")
+  val in = sim.in("in")
+  val out = sim.out("out")
+
+  rst.value = 1
+  en.value = 0
+  in.value = 0
+  sim.step()
+
+  assert(out.value == 0)
+}
+```
+
+Input writes use Scala setter syntax (`rst.value = 1`), and output reads use field-like access (`out.value`). Input reads still fail at runtime; the input getter exists only because Scala requires it for setter syntax. The same `step`, `drive`, `fork`, and `expect` simulation operations are forwarded to the Java `Sim`.

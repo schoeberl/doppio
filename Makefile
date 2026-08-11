@@ -7,6 +7,7 @@ examples:
 	sbt "runMain doppio.examples.RunExamples"
 	sbt "runMain doppio.examples.TestAccumulator"
 	sbt "runMain doppio.examples.TestAccumulatorWithInterface"
+	sbt "runMain doppio.examples.TestAccumulatorScalaBinding"
 	sbt "runMain doppio.examples.TestTinyAlu"
 	sbt "runMain doppio.examples.TestConcurrentFifo"
 
@@ -35,3 +36,6 @@ fifo:
 
 accumulator-interface:
 	sbt "runMain doppio.examples.TestAccumulatorWithInterface"
+
+accumulator-scala:
+	sbt "runMain doppio.examples.TestAccumulatorScalaBinding"
