@@ -79,6 +79,20 @@ Run the framework self-checks:
 sbt test
 ```
 
+Extract ports from a simple one-module Verilog/SystemVerilog file:
+
+```sh
+make ports
+make fifo-ports-java
+make accumulator-wrapper-java
+make tinyalu-wrapper-java
+scripts/extract_verilog_ports.py src/verilog/simple_fifo.v
+scripts/extract_verilog_ports.py src/verilog/simple_fifo.v --format java-config --exclude clk
+scripts/extract_verilog_ports.py src/verilog/accumulator.v --format java-wrapper --exclude clk --class-name AccumulatorInterface
+```
+
+The extractor is intentionally lightweight. It handles simple ANSI-style module headers and can emit `VerilatorConfig.input(...)` / `VerilatorConfig.output(...)` entries or a typed Java wrapper class with `InPort` and `OutPort` fields, but it is not a full Verilog parser.
+
 ## Backend Direction
 
 The public Java API talks to `SimulatorBackend`. A Verilator/ChiselSim implementation should provide:
