@@ -2,6 +2,8 @@ package doppio.examples;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLongArray;
 import doppio.InPort;
 import doppio.OutPort;
 import doppio.Sim;
@@ -9,11 +11,7 @@ import doppio.backend.VerilatorBackend;
 import doppio.backend.VerilatorConfig;
 
 public final class TestConcurrentFifo {
-    private static final int[] DATA = {
-            0x12, 0x34, 0x56, 0x78,
-            0x9a, 0xbc, 0xde, 0xf0,
-            0x11, 0x22, 0x33, 0x44
-    };
+    private static final int ITEM_COUNT = 1000;
 
     private TestConcurrentFifo() {
     }
@@ -37,16 +35,24 @@ public final class TestConcurrentFifo {
 
         try (VerilatorBackend backend = new VerilatorBackend(config)) {
             testConcurrentFifo(new Sim(backend));
-            System.out.println("PASS TestConcurrentFifo");
         }
     }
 
     private static void testConcurrentFifo(Sim dut) {
+        FifoStats stats = new FifoStats(ITEM_COUNT);
+
         dut.run(sim -> {
             reset(sim);
-            sim.fork(() -> produce(sim));
-            sim.fork(() -> consume(sim));
+            sim.fork(() -> produce(sim, stats));
+            sim.fork(() -> consume(sim, stats));
         });
+
+        System.out.printf(Locale.ROOT,
+                "PASS TestConcurrentFifo items=%d cycles=%d cycles/item=%.3f average_latency=%.3f cycles%n",
+                ITEM_COUNT,
+                stats.lastReadCycle(),
+                (double) stats.lastReadCycle() / ITEM_COUNT,
+                stats.averageLatency());
     }
 
     private static void reset(Sim sim) {
@@ -68,23 +74,26 @@ public final class TestConcurrentFifo {
         sim.step();
     }
 
-    private static void produce(Sim sim) {
+    private static void produce(Sim sim, FifoStats stats) {
         InPort wrEn = sim.inPort("wr_en");
         InPort din = sim.inPort("din");
         OutPort full = sim.outPort("full");
 
-        for (int value : DATA) {
-            boolean written = false;
-            while (!written) {
-                if (full.isHigh()) {
-                    wrEn.set(0);
-                    din.set(0);
-                } else {
-                    din.set(value);
-                    wrEn.set(1);
-                    written = true;
-                }
-                sim.step();
+        int nextValue = 0;
+        while (nextValue < ITEM_COUNT) {
+            int acceptedValue = -1;
+            if (full.isHigh()) {
+                wrEn.set(0);
+                din.set(0);
+            } else {
+                acceptedValue = nextValue;
+                din.set(acceptedValue);
+                wrEn.set(1);
+                nextValue++;
+            }
+            sim.step();
+            if (acceptedValue >= 0) {
+                stats.recordWrite(acceptedValue, sim.time());
             }
         }
 
@@ -93,34 +102,58 @@ public final class TestConcurrentFifo {
         sim.step();
     }
 
-    private static void consume(Sim sim) {
+    private static void consume(Sim sim, FifoStats stats) {
         InPort rdEn = sim.inPort("rd_en");
         OutPort empty = sim.outPort("empty");
         OutPort dout = sim.outPort("dout");
 
-        for (int i = 0; i < 6; i++) {
-            rdEn.set(0);
+        int expectedValue = 0;
+        while (expectedValue < ITEM_COUNT) {
+            boolean read = !empty.isHigh();
+            rdEn.set(read ? 1 : 0);
             sim.step();
-        }
 
-        for (int expected : DATA) {
-            boolean read = false;
-            while (!read) {
-                if (empty.isHigh()) {
-                    rdEn.set(0);
-                } else {
-                    rdEn.set(1);
-                    read = true;
-                }
-                sim.step();
+            if (read) {
+                int actual = (int) dout.asLong();
+                sim.expect(actual == expectedValue, String.format(
+                        "FIFO read %d, expected %d", actual, expectedValue));
+                stats.recordRead(actual, sim.time());
+                expectedValue++;
             }
-
-            long actual = dout.asLong() & 0xff;
-            sim.expect(actual == expected, String.format(
-                    "FIFO read 0x%02x, expected 0x%02x", actual, expected));
         }
 
         rdEn.set(0);
         sim.step();
+    }
+
+    private static final class FifoStats {
+        private final AtomicLongArray writeCycles;
+        private long lastReadCycle;
+        private long totalLatency;
+
+        private FifoStats(int itemCount) {
+            writeCycles = new AtomicLongArray(itemCount);
+        }
+
+        private void recordWrite(int value, long cycle) {
+            writeCycles.set(value, cycle);
+        }
+
+        private synchronized void recordRead(int value, long cycle) {
+            long writeCycle = writeCycles.get(value);
+            if (writeCycle == 0) {
+                throw new AssertionError("read value before recorded write: " + value);
+            }
+            lastReadCycle = cycle;
+            totalLatency += cycle - writeCycle;
+        }
+
+        private synchronized long lastReadCycle() {
+            return lastReadCycle;
+        }
+
+        private synchronized double averageLatency() {
+            return (double) totalLatency / ITEM_COUNT;
+        }
     }
 }

@@ -1,5 +1,5 @@
 module simple_fifo #(
-    parameter WIDTH = 8,
+    parameter WIDTH = 16,
     parameter DEPTH = 4
 ) (
     input wire clk,
