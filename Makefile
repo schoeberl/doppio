@@ -1,4 +1,4 @@
-.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java tinyalu fifo accumulator-interface
+.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java slides-pdf tinyalu fifo accumulator-interface
 
 compile:
 	sbt compile
@@ -27,6 +27,9 @@ accumulator-wrapper-java:
 
 tinyalu-wrapper-java:
 	scripts/extract_verilog_ports.py src/verilog/tinyalu.sv --format java-wrapper --exclude clk --class-name TinyAluInterface
+
+slides-pdf:
+	marp --pdf orconf-doppio-slides.md -o orconf-doppio-slides.pdf
 
 tinyalu:
 	sbt "runMain doppio.examples.TestTinyAlu"
