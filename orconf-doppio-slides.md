@@ -1,8 +1,7 @@
-# Doppio
+# Doppio: Open-Source Verification with Java and Scala
 
-Java and Scala for hardware verification
-
-ORConf, 12-minute idea talk
+Martin Schoeberl
+Technical University of Denmark
 
 ---
 
@@ -233,6 +232,17 @@ Backends:
 ```sh
 make test
 ```
+---
+
+# On AI Usage
+
+- The Doppio idea is genuine mine
+- A bit too busy to code -> Use CodeX
+- Writing is mainly mine
+- In the Codex session I can also do slides (from code and text) :-)
+- Is this good?
+- Where are we humans in that scientific production?
+
 
 ---
 

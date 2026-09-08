@@ -29,7 +29,7 @@ tinyalu-wrapper-java:
 	scripts/extract_verilog_ports.py src/verilog/tinyalu.sv --format java-wrapper --exclude clk --class-name TinyAluInterface
 
 slides-pdf:
-	marp --pdf orconf-doppio-slides.md -o orconf-doppio-slides.pdf
+	marp --allow-local-files --pdf orconf-doppio-slides.md -o orconf-doppio-slides.pdf
 
 tinyalu:
 	sbt "runMain doppio.examples.TestTinyAlu"
