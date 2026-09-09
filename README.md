@@ -217,3 +217,11 @@ dut.runScala { sim =>
 ```
 
 Input writes use Scala setter syntax (`rst.value = 1`), and output reads use field-like access (`out.value`). Input reads still fail at runtime; the input getter exists only because Scala requires it for setter syntax. The same `step`, `drive`, `fork`, and `expect` simulation operations are forwarded to the Java `Sim`.
+
+## ORConf Slides
+
+Generate the local PDF slide deck with GNU Make:
+
+```sh
+gmake pdf
+```

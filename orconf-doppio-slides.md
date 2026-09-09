@@ -16,17 +16,17 @@ Modern testbenches are software systems:
 - coverage
 - CI and regressions
 
-The testbench often lives as long as the DUT.
+The testbench often lives as long as the DUT
 
-So the software engineering environment matters.
+So the software engineering environment matters
 
 ---
 
 # Why JVM?
 
-Python showed that mainstream languages can help hardware verification.
+Python and cocotb showed that mainstream languages can help hardware verification
 
-Doppio asks the same question for the JVM.
+Doppio asks the same question for the JVM
 
 The JVM gives us:
 
@@ -37,17 +37,15 @@ The JVM gives us:
 - a large library ecosystem
 - fast enough execution
 
-Not fashionable.
-
-Boring in the useful way.
+Practical
 
 ---
 
 # Java And Scala
 
-Doppio is not Java versus Scala.
+Doppio is not Java versus Scala
 
-It is Java and Scala.
+It is Java and Scala
 
 Java:
 
@@ -65,7 +63,7 @@ Scala:
 
 # The Core Model
 
-Doppio uses a small two-phase simulation model.
+Doppio uses a simple two-phase simulation model
 
 ```text
 observe phase
@@ -79,7 +77,7 @@ step()
   return to observe
 ```
 
-This is the whole mental model.
+This is the whole mental model
 
 ---
 
@@ -101,7 +99,7 @@ dut.run(sim -> {
 });
 ```
 
-Inputs and outputs are different types.
+Input and output ports are different types
 
 ---
 
@@ -125,17 +123,17 @@ dut.runScala { sim =>
 }
 ```
 
-Same simulator.
+Same simulator
 
-More Scala-shaped syntax.
+More Scala-shaped syntax
 
 ---
 
 # Type-Safe DUT Wrappers
 
-Raw port names are useful early.
+Raw port names are useful early
 
-But tests should not be full of strings.
+But tests should not be full of strings
 
 ```java
 final class AccumulatorInterface {
@@ -153,15 +151,15 @@ final class AccumulatorInterface {
 }
 ```
 
-This can be generated from simple Verilog.
+This can be generated from simple Verilog
 
 ---
 
 # Concurrency
 
-Hardware testbenches need concurrent agents.
+Hardware testbenches need concurrent agents
 
-Doppio has `fork()`.
+Doppio has `fork()`
 
 ```java
 dut.run(sim -> {
@@ -172,13 +170,13 @@ dut.run(sim -> {
 });
 ```
 
-Producer and consumer are plain Java threads.
+Producer and consumer are plain Java threads
 
 ---
 
 # Phase Synchronization
 
-Concurrent agents synchronize at phase boundaries.
+Concurrent agents synchronize at phase boundaries
 
 ```text
 agent A observe ─┐
@@ -190,7 +188,7 @@ agent B step ────┼─> one clock tick
 agent C step ────┘
 ```
 
-All agents see the same observe/drive/step rhythm.
+All agents see the same observe/drive/step rhythm
 
 ---
 
@@ -232,17 +230,6 @@ Backends:
 ```sh
 make test
 ```
----
-
-# On AI Usage
-
-- The Doppio idea is genuine mine
-- A bit too busy to code -> Use CodeX
-- Writing is mainly mine
-- In the Codex session I can also do slides (from code and text) :-)
-- Is this good?
-- Where are we humans in that scientific production?
-
 
 ---
 
@@ -254,17 +241,33 @@ make test
 - How much UVM-like structure is useful?
 - What examples would make this convincing?
 
-The project is early enough that feedback can still shape it.
+The project is early enough that feedback can still shape it
+
+---
+
+# Project Context
+
+Doppio is part of the ODE4EC-PIV Chips JU project
+
+The plan is to connect it with related open-source hardware tooling
+
+One concrete direction:
+
+- integrate with Surfer
+- use Surfer for waveform-centric debugging
+- keep Doppio focused on tests, agents, and simulation control
+
+Surfer is part of the same Chips JU project
 
 ---
 
 # Summary
 
-Doppio is an experiment in JVM-based hardware verification.
+Doppio is an experiment in JVM-based hardware verification
 
-Java gives a stable baseline.
+Java gives a stable baseline
 
-Scala gives Chisel-friendly syntax.
+Scala gives Chisel-friendly syntax
 
 The core model is small:
 
@@ -272,4 +275,6 @@ The core model is small:
 observe -> drive -> step
 ```
 
-With `fork()` for concurrent test agents.
+With `fork()` for concurrent test agents
+
+<img src="slides/doppio-repo-qr.svg" width="180"> https://github.com/schoeberl/doppio

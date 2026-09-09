@@ -1,4 +1,4 @@
-.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java slides-pdf tinyalu fifo accumulator-interface
+.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java slides-pdf pdf tinyalu fifo accumulator-interface
 
 compile:
 	sbt compile
@@ -30,6 +30,8 @@ tinyalu-wrapper-java:
 
 slides-pdf:
 	marp --allow-local-files --pdf orconf-doppio-slides.md -o orconf-doppio-slides.pdf
+
+pdf: slides-pdf
 
 tinyalu:
 	sbt "runMain doppio.examples.TestTinyAlu"
