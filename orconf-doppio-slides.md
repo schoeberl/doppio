@@ -1,5 +1,17 @@
 # Doppio: Open-Source Verification with Java and Scala
 
+<style>
+section {
+  padding: 42px 56px;
+}
+pre {
+  font-size: 0.72em;
+}
+section img {
+  vertical-align: middle;
+}
+</style>
+
 Martin Schoeberl
 Technical University of Denmark
 
@@ -36,8 +48,6 @@ The JVM gives us:
 - debuggers and profilers
 - a large library ecosystem
 - fast enough execution
-
-Practical
 
 ---
 
@@ -227,9 +237,7 @@ Backends:
 - Verilator for simple Verilog
 - experimental ChiselSim bridge
 
-```sh
-make test
-```
+Full check: `make test`
 
 ---
 
@@ -258,6 +266,8 @@ One concrete direction:
 - keep Doppio focused on tests, agents, and simulation control
 
 Surfer is part of the same Chips JU project
+
+I am hiring a PhD to work on this
 
 ---
 
