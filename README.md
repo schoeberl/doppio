@@ -271,3 +271,7 @@ Generate the local PDF slide deck with GNU Make:
 ```sh
 gmake pdf
 ```
+
+## Acknowledgments
+
+This project has been supported by the ODE4EC-PIV project. The ODE4EC-PIV project has received funding from the Chips Joint Undertaking (Chips JU) under Grant Agreement No 101252356, with support from the European Union's Horizon Europe research and innovation programme and the National Funding Authorities of Portugal, Germany, Switzerland, Italy, Austria, Sweden, Spain, and Denmark.
