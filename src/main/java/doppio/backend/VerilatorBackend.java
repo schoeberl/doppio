@@ -1,5 +1,6 @@
 package doppio.backend;
 
+import java.math.BigInteger;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
     private final VerilatorConfig config;
     private final Map<String, VerilatorConfig.ConfigPort> ports;
-    private final Map<String, Long> previousValues = new HashMap<>();
+    private final Map<String, BigInteger> previousValues = new HashMap<>();
     private final Process simulation;
     private final BufferedWriter commands;
     private final BufferedReader responses;
@@ -29,7 +30,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         this.ports = indexPorts(config);
         try {
             Path executable = buildSimulation();
-            simulation = new ProcessBuilder(executable.toString())
+            simulation = new ProcessBuilder(executable.toString(), config.traceFile().toString())
                     .redirectError(ProcessBuilder.Redirect.INHERIT)
                     .start();
             commands = new BufferedWriter(new OutputStreamWriter(simulation.getOutputStream(), StandardCharsets.UTF_8));
@@ -49,30 +50,55 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
 
     @Override
     public long read(String portName) {
+        return asLong(readBigInteger(portName));
+    }
+
+    @Override
+    public void write(String portName, long value) {
+        write(portName, new BigInteger(Long.toUnsignedString(value)));
+    }
+
+    @Override
+    public BigInteger readBigInteger(String portName) {
         requirePort(portName);
         return command("read " + portName);
     }
 
     @Override
-    public void write(String portName, long value) {
+    public void write(String portName, BigInteger value) {
         VerilatorConfig.ConfigPort port = requirePort(portName);
+        if (value.signum() < 0 || value.bitLength() > port.width()) {
+            throw new IllegalArgumentException("value does not fit unsigned " + port.width() + "-bit port: " + portName);
+        }
         if (port.direction() == VerilatorConfig.Direction.OUTPUT) {
             throw new IllegalArgumentException("cannot write output port: " + portName);
         }
-        command("write " + portName + " " + Long.toUnsignedString(value));
+        command("write " + portName + " " + value.toString(16));
     }
 
     @Override
     public long previous(String portName) {
+        return asLong(previousBigInteger(portName));
+    }
+
+    @Override
+    public BigInteger previousBigInteger(String portName) {
         requirePort(portName);
-        return previousValues.getOrDefault(portName, 0L);
+        return previousValues.getOrDefault(portName, BigInteger.ZERO);
+    }
+
+    private static long asLong(BigInteger value) {
+        if (value.bitLength() > 64) {
+            throw new ArithmeticException("port value exceeds 64 bits; use readBigInteger");
+        }
+        return value.longValue();
     }
 
     @Override
     public void step() {
         previousValues.clear();
         for (String port : ports.keySet()) {
-            previousValues.put(port, read(port));
+            previousValues.put(port, readBigInteger(port));
         }
         command("step");
         currentTime++;
@@ -109,7 +135,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         command.add("--top-module");
         command.add(config.topModule());
         if (config.traceEnabled()) {
-            command.add("--trace");
+            command.add("--trace-vcd");
         }
         for (Path includeDir : config.includeDirs()) {
             command.add("-I" + includeDir.toAbsolutePath().normalize());
@@ -138,7 +164,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         return executable;
     }
 
-    private long command(String command) {
+    private BigInteger command(String command) {
         try {
             commands.write(command);
             commands.newLine();
@@ -148,10 +174,10 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
                 throw new IllegalStateException("Verilator simulation exited while handling command: " + command);
             }
             if (response.equals("OK")) {
-                return 0L;
+                return BigInteger.ZERO;
             }
             if (response.startsWith("OK ")) {
-                return Long.parseUnsignedLong(response.substring(3));
+                return new BigInteger(response.substring(3), 16);
             }
             if (response.startsWith("ERR ")) {
                 throw new IllegalStateException(response.substring(4));
@@ -192,7 +218,11 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         StringBuilder source = new StringBuilder();
         source.append("#include \"").append(topClass).append(".h\"\n");
         source.append("#include \"verilated.h\"\n");
+        if (config.traceEnabled()) {
+            source.append("#include \"verilated_vcd_c.h\"\n");
+        }
         source.append("#include <cstdint>\n");
+        source.append("#include <sstream>\n#include <iomanip>\n");
         source.append("#include <iostream>\n");
         source.append("#include <string>\n\n");
         source.append("static ").append(topClass).append("* top = nullptr;\n\n");
@@ -203,36 +233,57 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
     }
 
     private void appendReadFunction(StringBuilder source) {
-        source.append("static std::uint64_t read_port(const std::string& name) {\n");
+        source.append("static std::string read_port(const std::string& name) {\n");
+        source.append("    std::ostringstream value;\n    value << std::hex;\n");
         for (VerilatorConfig.ConfigPort port : config.ports()) {
+            String member = "top->" + cppIdentifier(port.name());
             source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
-            source.append("        return static_cast<std::uint64_t>(top->").append(cppIdentifier(port.name())).append(");\n");
-            source.append("    }\n");
+            if (port.width() > 64) {
+                int words = (port.width() - 1) / 32 + 1;
+                source.append("        for (int i = ").append(words - 1).append("; i >= 0; --i) {\n");
+                source.append("            value << std::setw(8) << std::setfill('0') << ").append(member).append("[i];\n        }\n");
+            } else {
+                source.append("        value << static_cast<std::uint64_t>(").append(member).append(");\n");
+            }
+            source.append("        return value.str();\n    }\n");
         }
-        source.append("    return 0;\n");
-        source.append("}\n\n");
+        source.append("    return \"0\";\n}\n\n");
     }
 
     private void appendWriteFunction(StringBuilder source) {
-        source.append("static bool write_port(const std::string& name, std::uint64_t value) {\n");
+        source.append("static bool write_port(const std::string& name, const std::string& value) {\n");
         for (VerilatorConfig.ConfigPort port : config.ports()) {
             if (port.direction() == VerilatorConfig.Direction.INPUT) {
+                String member = "top->" + cppIdentifier(port.name());
                 source.append("    if (name == \"").append(cppString(port.name())).append("\") {\n");
-                source.append("        top->").append(cppIdentifier(port.name())).append(" = value;\n");
-                source.append("        top->eval();\n");
-                source.append("        return true;\n");
-                source.append("    }\n");
+                if (port.width() > 64) {
+                    int words = (port.width() - 1) / 32 + 1;
+                    source.append("        std::string padded = std::string(").append(words * 8)
+                            .append(" - value.size(), '0') + value;\n");
+                    source.append("        for (int i = 0; i < ").append(words).append("; ++i) {\n");
+                    source.append("            ").append(member).append("[i] = std::stoul(padded.substr(padded.size() - 8 * (i + 1), 8), nullptr, 16);\n        }\n");
+                } else {
+                    source.append("        ").append(member).append(" = std::stoull(value, nullptr, 16);\n");
+                }
+                source.append("        top->eval();\n        return true;\n    }\n");
             }
         }
-        source.append("    return false;\n");
-        source.append("}\n\n");
+        source.append("    return false;\n}\n\n");
     }
 
     private void appendMain(StringBuilder source, String topClass) {
         source.append("int main(int argc, char** argv) {\n");
         source.append("    Verilated::commandArgs(argc, argv);\n");
+        if (config.traceEnabled()) {
+            source.append("    Verilated::traceEverOn(true);\n");
+        }
         source.append("    ").append(topClass).append(" model;\n");
         source.append("    top = &model;\n");
+        if (config.traceEnabled()) {
+            source.append("    VerilatedVcdC trace;\n    top->trace(&trace, 99);\n");
+            source.append("    trace.open(argv[1]);\n");
+            source.append("    if (!trace.isOpen()) return 1;\n");
+        }
         source.append("    top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("    top->eval();\n");
         source.append("    std::string command;\n");
@@ -243,7 +294,7 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         source.append("            std::cout << \"OK \" << read_port(name) << std::endl;\n");
         source.append("        } else if (command == \"write\") {\n");
         source.append("            std::string name;\n");
-        source.append("            std::uint64_t value;\n");
+        source.append("            std::string value;\n");
         source.append("            std::cin >> name >> value;\n");
         source.append("            if (write_port(name, value)) {\n");
         source.append("                std::cout << \"OK\" << std::endl;\n");
@@ -253,19 +304,38 @@ public final class VerilatorBackend implements SimulatorBackend, AutoCloseable {
         source.append("        } else if (command == \"step\") {\n");
         source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("            top->eval();\n");
+        if (config.traceEnabled()) {
+            source.append("            trace.dump(Verilated::time());\n");
+        }
+        source.append("            Verilated::timeInc(1);\n");
         source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 1;\n");
         source.append("            top->eval();\n");
+        if (config.traceEnabled()) {
+            source.append("            trace.dump(Verilated::time());\n");
+        }
+        source.append("            Verilated::timeInc(1);\n");
         source.append("            top->").append(cppIdentifier(config.clockPort())).append(" = 0;\n");
         source.append("            top->eval();\n");
+        if (config.traceEnabled()) {
+            source.append("            trace.dump(Verilated::time());\n");
+        }
+        source.append("            Verilated::timeInc(1);\n");
         source.append("            std::cout << \"OK\" << std::endl;\n");
         source.append("        } else if (command == \"finish\") {\n");
         source.append("            top->final();\n");
+        if (config.traceEnabled()) {
+            source.append("            trace.dump(Verilated::time());\n            trace.close();\n");
+        }
         source.append("            std::cout << \"OK\" << std::endl;\n");
         source.append("            return 0;\n");
         source.append("        } else {\n");
         source.append("            std::cout << \"ERR unknown command: \" << command << std::endl;\n");
         source.append("        }\n");
         source.append("    }\n");
+        source.append("    top->final();\n");
+        if (config.traceEnabled()) {
+            source.append("    trace.close();\n");
+        }
         source.append("    return 0;\n");
         source.append("}\n");
     }

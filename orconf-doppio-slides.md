@@ -45,9 +45,8 @@ The JVM gives us:
 - static types
 - mature IDEs and refactoring
 - build and CI tooling
-- debuggers and profilers
 - a large library ecosystem
-- fast enough execution
+- supports several languages
 
 ---
 
@@ -55,12 +54,13 @@ The JVM gives us:
 
 Doppio is not Java versus Scala
 
-It is Java and Scala
+It is Java and Scala - a double shot espresso
 
 Java:
 
 - stable baseline
 - widely known
+  - still in 3rd or 4th position in different indices
 - good for long-lived infrastructure
 
 Scala:
@@ -243,13 +243,15 @@ Full check: `make test`
 
 # What I Want Feedback On
 
-- Is the observe/drive/step model understandable?
-- Is JVM-based verification interesting?
+- Is the observe/drive/step model understandable? Useful?
+- Would you like to use Java or Scala for hardware verification?
 - Should Doppio stay lightweight?
-- How much UVM-like structure is useful?
+- How much UVM-like structure is useful? On top of Doppio?
 - What examples would make this convincing?
 
-The project is early enough that feedback can still shape it
+The project is very young => feedback can/shall shape it
+
+- Still freedom to change stuff and play with ideas
 
 ---
 
@@ -267,7 +269,7 @@ One concrete direction:
 
 Surfer is part of the same Chips JU project
 
-I am hiring a PhD to work on this
+I am hiring a PhD to work on this topic!
 
 ---
 
@@ -279,7 +281,7 @@ Java gives a stable baseline
 
 Scala gives Chisel-friendly syntax
 
-The core model is small:
+The core model is simple:
 
 ```text
 observe -> drive -> step

@@ -1,14 +1,19 @@
 package doppio;
 
 import doppio.backend.SimulatorBackend;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public final class Sim {
     private final SimulatorBackend backend;
     private Phase phase = Phase.OBSERVE;
     private final List<Thread> forkedThreads = new ArrayList<>();
+    private final Set<Thread> agents = new HashSet<>();
     private boolean running;
     private int activeAgents;
     private int driveArrivals;
@@ -37,6 +42,7 @@ public final class Sim {
     }
 
     public void run(Consumer<Sim> body) {
+        Objects.requireNonNull(body, "body");
         startRun();
         try {
             try {
@@ -54,19 +60,38 @@ public final class Sim {
     }
 
     public void fork(Runnable body) {
+        Objects.requireNonNull(body, "body");
         Thread thread;
         synchronized (this) {
             if (!running) {
                 throw new IllegalStateException("fork is only allowed inside Sim.run(...)");
             }
-            activeAgents++;
+            requireAgent();
+            rethrowFailure();
+            if (phase != Phase.OBSERVE) {
+                throw new IllegalStateException("fork is only allowed during the observe phase");
+            }
             thread = new Thread(() -> runForkedAgent(body), "doppio-agent-" + forkedThreads.size());
+            activeAgents++;
+            agents.add(thread);
             forkedThreads.add(thread);
+            try {
+                thread.start();
+            } catch (RuntimeException | Error e) {
+                agents.remove(thread);
+                forkedThreads.remove(thread);
+                activeAgents--;
+                recordFailure(e);
+                throw e;
+            }
         }
-        thread.start();
     }
 
     public synchronized void drive() {
+        requireAgent();
+        if (running) {
+            rethrowFailure();
+        }
         if (!running) {
             phase = Phase.DRIVE;
             return;
@@ -89,6 +114,10 @@ public final class Sim {
     }
 
     public synchronized void step() {
+        requireAgent();
+        if (running) {
+            rethrowFailure();
+        }
         if (!running) {
             backend.step();
             phase = Phase.OBSERVE;
@@ -114,15 +143,45 @@ public final class Sim {
     }
 
     synchronized long readPort(String path) {
+        checkRead();
+        return backend.read(path);
+    }
+
+    synchronized BigInteger readBigIntegerPort(String path) {
+        checkRead();
+        return backend.readBigInteger(path);
+    }
+
+    private void checkRead() {
+        requireAgent();
+        if (running) {
+            rethrowFailure();
+        }
         if (phase == Phase.DRIVE) {
             throw new IllegalStateException("port reads are not allowed during the drive phase");
         }
-        return backend.read(path);
+    }
+
+    void setPort(String path, BigInteger value) {
+        Objects.requireNonNull(value, "value");
+        if (value.signum() < 0) {
+            throw new IllegalArgumentException("port values must be unsigned");
+        }
+        drive();
+        synchronized (this) {
+            if (running) {
+                rethrowFailure();
+            }
+            backend.write(path, value);
+        }
     }
 
     void setPort(String path, long value) {
         drive();
         synchronized (this) {
+            if (running) {
+                rethrowFailure();
+            }
             backend.write(path, value);
         }
     }
@@ -145,10 +204,13 @@ public final class Sim {
         stepGeneration = 0;
         failure = null;
         forkedThreads.clear();
+        agents.clear();
+        agents.add(Thread.currentThread());
     }
 
     private void runForkedAgent(Runnable body) {
         try {
+            rethrowFailure();
             body.run();
         } catch (Throwable t) {
             recordFailure(t);
@@ -158,6 +220,7 @@ public final class Sim {
     }
 
     private synchronized void deregisterAgent() {
+        agents.remove(Thread.currentThread());
         activeAgents--;
         if (activeAgents < 0) {
             activeAgents = 0;
@@ -180,7 +243,11 @@ public final class Sim {
         if (failure == null && activeAgents > 0 && stepArrivals >= activeAgents) {
             stepArrivals = 0;
             driveArrivals = 0;
-            stepBackend();
+            try {
+                stepBackend();
+            } catch (Throwable t) {
+                recordFailure(t);
+            }
             notifyAll();
         }
     }
@@ -197,31 +264,47 @@ public final class Sim {
     private synchronized void recordFailure(Throwable t) {
         if (failure == null) {
             failure = t;
+            interruptForkedThreads();
         }
         notifyAll();
     }
 
     private void joinForkedThreads() {
         int joined = 0;
-        while (true) {
-            Thread thread;
-            synchronized (this) {
-                if (joined >= forkedThreads.size()) {
-                    if (activeAgents == 0) {
+        boolean interrupted = Thread.interrupted();
+        if (interrupted) {
+            recordFailure(new InterruptedException("interrupted while running Doppio agents"));
+            interruptForkedThreads();
+        }
+        try {
+            while (true) {
+                Thread thread;
+                synchronized (this) {
+                    if (joined >= forkedThreads.size()) {
                         return;
                     }
-                    awaitPhaseChange();
-                    continue;
+                    thread = forkedThreads.get(joined);
                 }
-                thread = forkedThreads.get(joined);
-                joined++;
+                try {
+                    thread.join();
+                    joined++;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                    recordFailure(e);
+                    interruptForkedThreads();
+                }
             }
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
+        } finally {
+            if (interrupted) {
                 Thread.currentThread().interrupt();
-                recordFailure(e);
-                return;
+            }
+        }
+    }
+
+    private synchronized void interruptForkedThreads() {
+        for (Thread forked : forkedThreads) {
+            if (forked != Thread.currentThread()) {
+                forked.interrupt();
             }
         }
     }
@@ -232,7 +315,14 @@ public final class Sim {
         driveArrivals = 0;
         stepArrivals = 0;
         phase = Phase.OBSERVE;
+        agents.clear();
         notifyAll();
+    }
+
+    private void requireAgent() {
+        if (running && !agents.contains(Thread.currentThread())) {
+            throw new IllegalStateException("simulation access requires an agent registered with run or fork");
+        }
     }
 
     private void rethrowFailure() {

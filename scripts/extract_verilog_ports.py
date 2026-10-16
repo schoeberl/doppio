@@ -164,7 +164,13 @@ def print_java_config(ports: list[Port], exclude: set[str]) -> None:
             raise ValueError("VerilatorConfig Java output does not support inout ports")
         factory = "input" if port.direction == "input" else "output"
         comma = "," if index < len(selected) - 1 else ""
-        print(f'VerilatorConfig.{factory}("{port.name}"){comma}')
+        # Literal ranges can be carried directly into the backend configuration.
+        # Parameter expressions still need their elaborated width supplied by the caller.
+        bounds = re.fullmatch(r"\[\s*(\d+)\s*:\s*(\d+)\s*\]", port.width or "")
+        width = abs(int(bounds.group(1)) - int(bounds.group(2))) + 1 if bounds else None
+        argument = f", {width}" if width is not None else (", 1" if port.width is None else "")
+        note = f" // Supply the elaborated width for {port.width}" if port.width and width is None else ""
+        print(f'VerilatorConfig.{factory}("{port.name}"{argument}){comma}{note}')
 
 
 def to_camel_case(name: str) -> str:

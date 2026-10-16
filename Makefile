@@ -1,4 +1,4 @@
-.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java slides-pdf pdf tinyalu fifo accumulator-interface
+.PHONY: compile examples test ports fifo-ports-java accumulator-wrapper-java tinyalu-wrapper-java slides-pdf pdf tinyalu fifo accumulator-interface wide
 
 compile:
 	sbt compile
@@ -10,6 +10,7 @@ examples:
 	sbt "runMain doppio.examples.TestAccumulatorScalaBinding"
 	sbt "runMain doppio.examples.TestTinyAlu"
 	sbt "runMain doppio.examples.TestConcurrentFifo"
+	sbt "runMain doppio.examples.TestWideRegister"
 
 test: compile examples
 	sbt test
@@ -44,3 +45,6 @@ accumulator-interface:
 
 accumulator-scala:
 	sbt "runMain doppio.examples.TestAccumulatorScalaBinding"
+
+wide:
+	sbt "runMain doppio.examples.TestWideRegister"

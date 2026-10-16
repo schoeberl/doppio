@@ -186,6 +186,8 @@ The `doppio` Java package contains the first plain-Java verification framework s
 
 Each step follows the same order: observe DUT ports, drive DUT inputs, then advance the clock by one tick. With forked agents, `drive()` and `step()` are barriers across all active agents, so monitors and drivers see the same phase transitions. A passive agent can call `step()` directly after observing; that marks it as having no drives for the current cycle.
 
+Fork new agents during the observe phase. During `run`, port access, `drive`, `step`, and `fork` must come from the run body or a forked agent; unrelated Java threads are rejected. Agents may finish at different cycles, and nested forks are supported. An uncaught agent or backend failure releases the simulation barriers, interrupts the remaining forked agents, joins them, and rethrows the first failure. If the run owner is interrupted, Doppio interrupts and joins its children before returning, preserving the owner's interrupt status. Agent code that blocks outside Doppio must respond to interruption; code that ignores it can still prevent shutdown. The run body is not interrupted by child failures, so it should use Doppio's barriers rather than wait indefinitely on external events.
+
 Run the Java example directly with:
 
 ```sh
@@ -217,6 +219,50 @@ dut.runScala { sim =>
 ```
 
 Input writes use Scala setter syntax (`rst.value = 1`), and output reads use field-like access (`out.value`). Input reads still fail at runtime; the input getter exists only because Scala requires it for setter syntax. The same `step`, `drive`, `fork`, and `expect` simulation operations are forwarded to the Java `Sim`.
+
+## Wide Ports
+
+Use Java `BigInteger` or Scala `BigInt` for ports wider than 64 bits. The in-memory, Verilator, and ChiselSim backends preserve wide values, including snapshots returned by `previousBigInteger`.
+
+```java
+BigInteger value = BigInteger.ONE.shiftLeft(128).add(BigInteger.valueOf(42));
+sim.inPort("in").set(value);
+sim.step();
+sim.expect(sim.outPort("out").asBigInteger().equals(value), "all 129 bits match");
+```
+
+```scala
+sim.in("in").bigValue = (BigInt(1) << 128) + 42
+sim.step()
+assert(sim.out("out").bigValue == (BigInt(1) << 128) + 42)
+// Assignment also supports: sim.in("in") := BigInt(...)
+```
+
+Values are unsigned. Negative `BigInteger`/`BigInt` writes are rejected. The `long` API retains its 64-bit bit-pattern representation: an unsigned 64-bit value with its top bit set reads as a negative `long`. Reads of values requiring more than 64 bits throw `ArithmeticException`; use the wide accessor to avoid truncation. `isHigh()` checks the entire value.
+
+For Verilator, supply the actual HDL width in the configuration:
+
+```java
+VerilatorConfig.input("in", 129),
+VerilatorConfig.output("out", 129)
+```
+
+The original name-only configuration remains available for ports up to 64 bits. Explicit widths also enforce the unsigned input range. The port extractor emits widths for literal ranges; parameter expressions are annotated for you to supply their elaborated width. Custom backends implementing the original `long` interface continue to work through default wide-access methods limited to 64 bits.
+
+## Waveforms
+
+Set `traceEnabled` to `true` in `VerilatorConfig` to write `waveform.vcd` under the build directory. `config.traceFile()` returns its absolute path. Close the backend with try-with-resources to finalize the file. Each traced run replaces the file at that path; use separate build directories to retain multiple runs.
+
+Trace samples capture the settled inputs before the rising edge, the rising edge, and the falling edge. Each Doppio cycle occupies three waveform time units; `Sim.time()` still counts cycles. Writes within one drive phase settle into the next sample. Closing the backend captures any final writes. Tracing is disabled by default.
+
+Run the 129-bit register example and open its waveform in Surfer:
+
+```sh
+make wide
+surfer build/doppio-verilator/wide_register/waveform.vcd
+```
+
+This produces a standard VCD file using [Verilator's C++ tracing API](https://verilator.org/guide/latest/faq.html#how-do-i-generate-waveforms-traces-in-c). Surfer integration currently consists of opening that file; live viewer control and FST output are not implemented.
 
 ## ORConf Slides
 

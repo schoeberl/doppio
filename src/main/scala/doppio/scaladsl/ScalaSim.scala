@@ -38,6 +38,13 @@ final class ScalaInPort private[scaladsl] (val javaPort: InPort) {
 
   def :=(value: Long): Unit = javaPort.set(value)
 
+  def bigValue: BigInt =
+    throw new UnsupportedOperationException("input port values cannot be read")
+
+  def bigValue_=(value: BigInt): Unit = javaPort.set(value.bigInteger)
+
+  def :=(value: BigInt): Unit = javaPort.set(value.bigInteger)
+
   override def toString: String = path
 }
 
@@ -46,7 +53,9 @@ final class ScalaOutPort private[scaladsl] (val javaPort: OutPort) {
 
   def value: Long = javaPort.asLong()
 
+  def bigValue: BigInt = BigInt(javaPort.asBigInteger())
+
   def high: Boolean = javaPort.isHigh()
 
-  override def toString: String = s"$path=$value"
+  override def toString: String = s"$path=$bigValue"
 }

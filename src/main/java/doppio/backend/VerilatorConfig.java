@@ -50,8 +50,20 @@ public record VerilatorConfig(
         return new InPort(name);
     }
 
+    public static InPort input(String name, int width) {
+        return new InPort(name, width);
+    }
+
     public static OutPort output(String name) {
         return new OutPort(name);
+    }
+
+    public static OutPort output(String name, int width) {
+        return new OutPort(name, width);
+    }
+
+    public Path traceFile() {
+        return buildDir.toAbsolutePath().normalize().resolve("waveform.vcd");
     }
 
     public enum Direction {
@@ -63,11 +75,22 @@ public record VerilatorConfig(
         String name();
 
         Direction direction();
+
+        default int width() {
+            return 64;
+        }
     }
 
-    public record InPort(String name) implements ConfigPort {
+    public record InPort(String name, int width) implements ConfigPort {
+        public InPort(String name) {
+            this(name, 64);
+        }
+
         public InPort {
             Objects.requireNonNull(name, "name");
+            if (width <= 0) {
+                throw new IllegalArgumentException("port width must be positive");
+            }
         }
 
         @Override
@@ -76,9 +99,16 @@ public record VerilatorConfig(
         }
     }
 
-    public record OutPort(String name) implements ConfigPort {
+    public record OutPort(String name, int width) implements ConfigPort {
+        public OutPort(String name) {
+            this(name, 64);
+        }
+
         public OutPort {
             Objects.requireNonNull(name, "name");
+            if (width <= 0) {
+                throw new IllegalArgumentException("port width must be positive");
+            }
         }
 
         @Override

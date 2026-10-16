@@ -1,5 +1,7 @@
 package doppio;
 
+import java.math.BigInteger;
+
 public final class InPort {
     private final Sim sim;
     private final String path;
@@ -14,6 +16,10 @@ public final class InPort {
     }
 
     public void set(long value) {
+        sim.setPort(path, value);
+    }
+
+    public void set(BigInteger value) {
         sim.setPort(path, value);
     }
 

@@ -11,7 +11,7 @@ final class ChiselSimBackend(
 ) extends SimulatorBackend {
   private val clockHandle = new PeekPokeAPI.TestableClock(clock)
   private var currentTime = 0L
-  private var previousValues = Map.empty[String, Long]
+  private var previousValues = Map.empty[String, java.math.BigInteger]
 
   def this(clock: Clock, ports: java.util.Map[String, ChiselSimPort]) =
     this(clock, ports, 10)
@@ -25,10 +25,23 @@ final class ChiselSimBackend(
     port(portName).write(value)
 
   override def previous(portName: String): Long =
-    previousValues.getOrElse(portName, 0L)
+    ChiselSimPort.asLong(previousBigInteger(portName))
+
+  override def readBigInteger(portName: String): java.math.BigInteger =
+    port(portName).readBigInteger()
+
+  override def write(portName: String, value: java.math.BigInteger): Unit = {
+    require(value.signum() >= 0, "port values must be unsigned")
+    port(portName).write(value)
+  }
+
+  override def previousBigInteger(portName: String): java.math.BigInteger = {
+    port(portName)
+    previousValues.getOrElse(portName, java.math.BigInteger.ZERO)
+  }
 
   override def step(): Unit = {
-    previousValues = ports.asScala.view.mapValues(_.read()).toMap
+    previousValues = ports.asScala.view.mapValues(_.readBigInteger()).toMap
     clockHandle.step(1, period)
     currentTime += 1
   }
@@ -46,9 +59,20 @@ sealed trait ChiselSimPort {
   def read(): Long
 
   def write(value: Long): Unit
+
+  def readBigInteger(): java.math.BigInteger
+
+  def write(value: java.math.BigInteger): Unit
 }
 
 object ChiselSimPort {
+  private[backend] def asLong(value: java.math.BigInteger): Long = {
+    if (value.bitLength() > 64) {
+      throw new ArithmeticException("port value exceeds 64 bits; use readBigInteger")
+    }
+    value.longValue()
+  }
+
   def bool(port: Bool): ChiselSimPort =
     new BoolPort(port)
 
@@ -59,19 +83,35 @@ object ChiselSimPort {
     private val handle = new PeekPokeAPI.TestableBool(port)
 
     override def read(): Long =
-      handle.peekValue().asBigInt.longValue
+      asLong(readBigInteger())
 
     override def write(value: Long): Unit =
       handle.poke(value != 0)
+
+    override def readBigInteger(): java.math.BigInteger =
+      handle.peekValue().asBigInt.bigInteger
+
+    override def write(value: java.math.BigInteger): Unit = {
+      require(value.signum() >= 0 && value.bitLength() <= 1, "value does not fit Bool port")
+      handle.poke(value.signum() != 0)
+    }
   }
 
   private final class UIntPort(port: UInt) extends ChiselSimPort {
     private val handle = new PeekPokeAPI.TestableUInt(port)
 
     override def read(): Long =
-      handle.peekValue().asBigInt.longValue
+      asLong(readBigInteger())
 
     override def write(value: Long): Unit =
+      write(new java.math.BigInteger(java.lang.Long.toUnsignedString(value)))
+
+    override def readBigInteger(): java.math.BigInteger =
+      handle.peekValue().asBigInt.bigInteger
+
+    override def write(value: java.math.BigInteger): Unit = {
+      require(value.signum() >= 0 && value.bitLength() <= port.getWidth, "value does not fit UInt port")
       handle.poke(BigInt(value))
+    }
   }
 }
