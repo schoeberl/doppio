@@ -18,6 +18,27 @@ public record VerilatorConfig(
             Path topFile,
             String topModule,
             List<Path> includeDirs,
+            boolean traceEnabled,
+            String clockPort,
+            List<ConfigPort> ports) {
+        this(topFile, topModule, includeDirs, defaultBuildDir(topModule), traceEnabled,
+                clockPort, ports, "verilator");
+    }
+
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
+            boolean traceEnabled,
+            List<ConfigPort> ports) {
+        this(topFile, topModule, includeDirs, defaultBuildDir(topModule), traceEnabled,
+                "clk", ports, "verilator");
+    }
+
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
             Path buildDir,
             boolean traceEnabled,
             String clockPort,
@@ -44,6 +65,15 @@ public record VerilatorConfig(
         Objects.requireNonNull(verilatorCommand, "verilatorCommand");
         includeDirs = List.copyOf(includeDirs);
         ports = List.copyOf(ports);
+    }
+
+    private static Path defaultBuildDir(String topModule) {
+        Objects.requireNonNull(topModule, "topModule");
+        String name = topModule.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (name.isEmpty() || name.equals(".") || name.equals("..")) {
+            name = "model";
+        }
+        return Path.of("build", "doppio-verilator", name);
     }
 
     public static InPort input(String name) {
