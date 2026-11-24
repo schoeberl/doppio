@@ -80,6 +80,20 @@ source ~/.zshrc
 
 The guide also includes a build function for the environment used in step 5.
 
+### Troubleshooting: LLVM IR compiler version
+
+Arcilator emits LLVM IR that must be compiled by a compatible `clang++`.
+If simulation setup fails, the `clang++` found on `PATH` may be incompatible with the LLVM version used by Arcilator.
+
+On macOS, put LLVM binaries before the system
+compiler in `PATH`. Add this to `~/.zshrc` so it applies to future shells:
+
+```sh
+export PATH="$(brew --prefix llvm)/bin:$PATH"
+```
+
+Reload the shell with `source ~/.zshrc` or open a new terminal.
+
 ## Backend overview
 
 This section explains the implementation of Doppio's `ArcilatorBackend.java`.
