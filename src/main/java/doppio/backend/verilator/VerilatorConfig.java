@@ -1,75 +1,79 @@
-package doppio.backend;
+package doppio.backend.verilator;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
-public record ArcilatorConfig(
-        Path mlirFile,
+public record VerilatorConfig(
+        Path topFile,
+        String topModule,
+        List<Path> includeDirs,
         Path buildDir,
+        boolean traceEnabled,
         String clockPort,
         List<ConfigPort> ports,
-        String arcilatorCommand,
-        boolean traceEnabled) {
+        String verilatorCommand) {
 
-    public ArcilatorConfig(Path mlirFile, String clockPort, List<ConfigPort> ports) {
-        this(mlirFile, defaultBuildDir(mlirFile), clockPort, ports, "arcilator", false);
-    }
-
-    public ArcilatorConfig(Path mlirFile, List<ConfigPort> ports) {
-        this(mlirFile, defaultBuildDir(mlirFile), "clock", ports, "arcilator", false);
-    }
-
-    public ArcilatorConfig(Path mlirFile) {
-        this(mlirFile, defaultBuildDir(mlirFile), "clock", List.of(), "arcilator", false);
-    }
-
-    public ArcilatorConfig(
-            Path mlirFile,
-            Path buildDir,
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
+            boolean traceEnabled,
             String clockPort,
             List<ConfigPort> ports) {
-        this(mlirFile, buildDir, clockPort, ports, "arcilator", false);
+        this(topFile, topModule, includeDirs, defaultBuildDir(topModule), traceEnabled,
+                clockPort, ports, "verilator");
     }
 
-    public ArcilatorConfig(
-            Path mlirFile,
-            Path buildDir,
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
+            boolean traceEnabled,
             List<ConfigPort> ports) {
-        this(mlirFile, buildDir, "clock", ports, "arcilator", false);
+        this(topFile, topModule, includeDirs, defaultBuildDir(topModule), traceEnabled,
+                "clk", ports, "verilator");
     }
 
-    public ArcilatorConfig(
-            Path mlirFile,
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
             Path buildDir,
+            boolean traceEnabled,
             String clockPort,
-            List<ConfigPort> ports,
+            List<ConfigPort> ports) {
+        this(topFile, topModule, includeDirs, buildDir, traceEnabled, clockPort, ports, "verilator");
+    }
+
+    public VerilatorConfig(
+            Path topFile,
+            String topModule,
+            List<Path> includeDirs,
+            Path buildDir,
             boolean traceEnabled) {
-        this(mlirFile, buildDir, clockPort, ports, "arcilator", traceEnabled);
+        this(topFile, topModule, includeDirs, buildDir, traceEnabled, "clk", List.of(), "verilator");
     }
 
-    public ArcilatorConfig {
-        Objects.requireNonNull(mlirFile, "mlirFile");
+    public VerilatorConfig {
+        Objects.requireNonNull(topFile, "topFile");
+        Objects.requireNonNull(topModule, "topModule");
+        Objects.requireNonNull(includeDirs, "includeDirs");
         Objects.requireNonNull(buildDir, "buildDir");
         Objects.requireNonNull(clockPort, "clockPort");
         Objects.requireNonNull(ports, "ports");
-        Objects.requireNonNull(arcilatorCommand, "arcilatorCommand");
+        Objects.requireNonNull(verilatorCommand, "verilatorCommand");
+        includeDirs = List.copyOf(includeDirs);
         ports = List.copyOf(ports);
     }
 
-    private static Path defaultBuildDir(Path mlirFile) {
-        Objects.requireNonNull(mlirFile, "mlirFile");
-        Path fileName = mlirFile.getFileName();
-        String name = fileName == null ? "model" : fileName.toString();
-        int extension = name.lastIndexOf('.');
-        if (extension > 0) {
-            name = name.substring(0, extension);
-        }
-        name = name.replaceAll("[^A-Za-z0-9._-]", "_");
+    private static Path defaultBuildDir(String topModule) {
+        Objects.requireNonNull(topModule, "topModule");
+        String name = topModule.replaceAll("[^A-Za-z0-9._-]", "_");
         if (name.isEmpty() || name.equals(".") || name.equals("..")) {
             name = "model";
         }
-        return Path.of("build", "doppio-arcilator", name);
+        return Path.of("build", "doppio-verilator", name);
     }
 
     public static InPort input(String name) {
@@ -99,8 +103,12 @@ public record ArcilatorConfig(
 
     public interface ConfigPort {
         String name();
+
         Direction direction();
-        int width();
+
+        default int width() {
+            return 64;
+        }
     }
 
     public record InPort(String name, int width) implements ConfigPort {

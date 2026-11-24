@@ -4,8 +4,8 @@ import java.nio.file.Path;
 import doppio.InPort;
 import doppio.OutPort;
 import doppio.Sim;
-import doppio.backend.ArcilatorBackend;
-import doppio.backend.ArcilatorConfig;
+import doppio.backend.arcilator.ArcilatorBackend;
+import doppio.backend.arcilator.ArcilatorConfig;
 
 public final class TestArcilatorAccumulator {
     private TestArcilatorAccumulator() {

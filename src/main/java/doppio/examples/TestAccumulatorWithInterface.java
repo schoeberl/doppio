@@ -5,8 +5,8 @@ import java.util.List;
 import doppio.InPort;
 import doppio.OutPort;
 import doppio.Sim;
-import doppio.backend.VerilatorBackend;
-import doppio.backend.VerilatorConfig;
+import doppio.backend.verilator.VerilatorBackend;
+import doppio.backend.verilator.VerilatorConfig;
 
 public final class TestAccumulatorWithInterface {
     private TestAccumulatorWithInterface() {

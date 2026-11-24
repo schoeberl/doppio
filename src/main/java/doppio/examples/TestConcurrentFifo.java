@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import doppio.InPort;
 import doppio.OutPort;
 import doppio.Sim;
-import doppio.backend.VerilatorBackend;
-import doppio.backend.VerilatorConfig;
+import doppio.backend.verilator.VerilatorBackend;
+import doppio.backend.verilator.VerilatorConfig;
 
 public final class TestConcurrentFifo {
     private static final int ITEM_COUNT = 1000;

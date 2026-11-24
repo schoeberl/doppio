@@ -1,7 +1,6 @@
 # Arcilator Backend Implementation Guide
 
-This document explains the implementation of Doppio's
-[ArcilatorBackend.java](/Users/vvlka/Documents/PhD/Research/Doppio/doppio/src/main/java/doppio/backend/ArcilatorBackend.java).
+This document explains the implementation of Doppio's `ArcilatorBackend.java`.
 It covers the design decisions, build pipeline, Java/native process boundary,
 state layout, protocol, clock semantics, value conversions, and all major
 methods.
@@ -124,8 +123,7 @@ and widths are validated against that metadata.
 
 ## 4. Constructor flow
 
-The constructor [ArcilatorBackend(java.lang...)](/Users/vvlka/Documents/PhD/Research/Doppio/doppio/src/main/java/doppio/backend/ArcilatorBackend.java)
-performs all expensive setup:
+The constructor performs all expensive setup:
 
 1. Rejects a null configuration.
 2. Rejects trace mode, which is not implemented for the native path.
@@ -384,151 +382,7 @@ The default primary clock name is `clock`; users can override it with
 `ArcilatorConfig.clockPort`. The current implementation does not support
 several independent clock domains.
 
-## 9. Public Java API behavior
-
-### `time()`
-
-Returns Java's `currentTime`. It represents Doppio cycles, not wall-clock
-simulation units.
-
-### `read(String portName)`
-
-Calls `readBigInteger()`, but rejects values wider than 64 bits. This prevents
-silent unsigned-to-long truncation. Wide-port users must call
-`readBigInteger()`.
-
-### `readBigInteger(String portName)`
-
-Checks that the name exists, then sends:
-
-```text
-read <portName>
-```
-
-### `write(String portName, long value)`
-
-Converts the Java `long` into `BigInteger` using
-`Long.toUnsignedString(value)`, preserving the low 64-bit unsigned pattern.
-
-### `write(String portName, BigInteger value)`
-
-Enforces:
-
-* no negative value;
-* no value whose `bitLength()` exceeds configured port width;
-* input direction only.
-
-Port metadata is checked before protocol communication.
-
-### `previous(String portName)`
-
-Converts `previousBigInteger()` to an unsigned `long`, rejecting values over
-64 bits.
-
-### `previousBigInteger(String portName)`
-
-Returns the snapshot associated with the named port. The value is captured at
-the beginning of `step()`.
-
-The convention is:
-
-```text
-previous = state before the most recent step
-current  = state after the most recent step
-```
-
-Before a snapshot exists, the value is `BigInteger.ZERO`.
-
-### `step()`
-
-The sequence is:
-
-1. clear old snapshots;
-2. read every configured port through native protocol;
-3. store those values in `previousValues`;
-4. send `step`;
-5. increment Java time only after `OK`.
-
-This snapshot algorithm is intentionally consistent with `VerilatorBackend`.
-
-### `close()`
-
-If the process is alive:
-
-1. send `finish`;
-2. wait for termination;
-3. preserve an interrupted status if needed;
-4. destroy forcibly in `finally`.
-
-This ensures native state and process resources are released.
-
-## 10. Port validation
-
-`indexPorts()` uses Java configuration entries when a subset is supplied, and
-otherwise discovers every non-clock input/output from state metadata. In both
-modes it checks:
-
-* no duplicate names;
-* no clock included as a normal port;
-* input names exist in generated input metadata;
-* output names exist in generated output metadata;
-* configured width equals generated width;
-* at least one data port exists.
-
-The Java configuration remains authoritative for API exposure and width checks.
-Arcilator metadata is authoritative for actual state offsets and actual widths.
-
-## 11. Wide-port support
-
-The backend is not limited to 64-bit values:
-
-* Java input/output APIs use `BigInteger`;
-* C++ protocol values are hexadecimal strings;
-* state JSON supplies arbitrary `numBits`;
-* C++ padding and masking operate on complete byte arrays.
-
-The only limit is that `read(String)` and `previous(String)` cannot represent
-values above unsigned 64 bits. Those APIs intentionally direct users to
-`readBigInteger()` and `previousBigInteger()`.
-
-## 12. Previous values and snapshot timing
-
-Before `step()` sends the native command, Java captures every configured port:
-
-```java
-for (String port : ports.keySet()) {
-    previousValues.put(port, readBigInteger(port));
-}
-```
-
-This produces a complete pre-cycle snapshot independent of C++ state mutations.
-After success, `previous*()` continues to expose this snapshot until the next
-`step()`.
-
-## 13. Accumulator example
-
-`TestArcilatorAccumulator` uses automatic port discovery for:
-
-```text
-reset: 1 bit input
-en:    1 bit input
-in:    8 bit input
-out:   8 bit output
-clock: controlled internally
-```
-
-It follows the normal Doppio API:
-
-```java
-try (ArcilatorBackend backend = new ArcilatorBackend(config)) {
-    testAccumulator(new Sim(backend));
-}
-```
-
-The test writes via `InPort`, reads via `OutPort`, and calls `Sim.step()`.
-No Arcilator-specific operation is exposed to test code.
-
-## 14. Generated build artifacts
+## 9. Generated build artifacts
 
 For the accumulator, the build directory contains:
 
@@ -547,7 +401,7 @@ These files make each stage inspectable:
 * C++ explains protocol behavior;
 * object/executable are the final native simulation.
 
-## 15. Limitations
+## 10. Limitations
 
 Compared with `VerilatorBackend`, the current Arcilator backend has:
 
@@ -561,7 +415,7 @@ Compared with `VerilatorBackend`, the current Arcilator backend has:
 It does, however, keep test code independent of the underlying backend:
 the same `Sim`, `InPort`, `OutPort`, and `step()` operations are used.
 
-## 16. Design tradeoffs
+## 11. Design tradeoffs
 
 Arcilator JIT `--run` is batch-oriented and is unsuitable for persistent
 interactive `read`/`write` calls. Directly spawning `arcilator --run` after every
@@ -571,11 +425,3 @@ A custom C++ protocol process is therefore preferable to an interactive JIT
 shell: lowering is done once, state remains resident, and Java sees a simple
 line protocol. Native state offsets are discovered from Arcilator rather than
 reimplemented in Java.
-
-## 17. Source copy
-
-The current commented source is available directly at:
-
-* [ArcilatorBackend.java](/Users/vvlka/Documents/PhD/Research/Doppio/doppio/src/main/java/doppio/backend/ArcilatorBackend.java)
-* [ArcilatorConfig.java](/Users/vvlka/Documents/PhD/Research/Doppio/doppio/src/main/java/doppio/backend/ArcilatorConfig.java)
-* [TestArcilatorAccumulator.java](/Users/vvlka/Documents/PhD/Research/Doppio/doppio/src/main/java/doppio/examples/TestArcilatorAccumulator.java)
