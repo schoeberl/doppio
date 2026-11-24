@@ -1,11 +1,93 @@
-# Arcilator Backend Implementation Guide
+# Arcilator Backend Guide
 
-This document explains the implementation of Doppio's `ArcilatorBackend.java`.
+## CIRCT and Arcilator
+
+[CIRCT](https://circt.llvm.org/) is an LLVM-based hardware compiler infrastructure
+that provides MLIR dialects and tools for designing, lowering, and verifying
+hardware.
+
+Arcilator is a CIRCT tool that lowers hardware models and executes their state
+and control logic. Doppio uses it to turn MLIR sources into native simulations
+while keeping the Java and Scala test API independent of the simulator backend.
+
+## Installation instructions
+
+The following setup was used on macOS with Homebrew.
+
+### Prerequisites
+
+Update Homebrew:
+
+```sh
+brew update
+```
+
+Install the build dependencies:
+
+```sh
+brew install cmake
+brew install ninja
+brew install python
+brew install git
+brew install zlib
+```
+
+Verify the installations:
+
+```sh
+clang --version
+clang++ --version
+cmake --version
+ninja --version
+python3 --version
+git --version
+brew --version
+```
+
+Install LLVM's linker:
+
+```sh
+brew install lld
+```
+
+### CIRCT build
+
+Follow the [official CIRCT Getting Started guide](https://circt.llvm.org/docs/GettingStarted/)
+to obtain the source and build CIRCT and LLVM/MLIR.
+
+Additional CIRCT frontends have dedicated guides. For example, the
+[CIRCT Verilog frontend](https://circt.llvm.org/docs/Tools/circt-verilog/)
+documents the Verilog installation and usage flow.
+
+After the build is complete, add the CIRCT and LLVM/MLIR binaries to `~/.zshrc`:
+
+```sh
+nano ~/.zshrc
+```
+
+Add:
+
+```sh
+# CIRCT and LLVM/MLIR tools
+export PATH="$HOME/Projects/circt/build/bin:$HOME/Projects/circt/llvm/build/bin:$PATH"
+```
+
+Reload the shell configuration:
+
+```sh
+source ~/.zshrc
+```
+
+The guide also includes a build function for the environment used in step 5.
+
+## Backend overview
+
+This section explains the implementation of Doppio's `ArcilatorBackend.java`.
 It covers the design decisions, build pipeline, Java/native process boundary,
-state layout, protocol, clock semantics, value conversions, and all major
+state layout, protocol, clock semantics, value conversions, and the main API
 methods.
 
-## 1. Purpose and architectural decision
+### 1. Purpose and architectural decision
 
 The backend lets Doppio use MLIR as a hardware simulation source while preserving
 the normal `SimulatorBackend` API:
@@ -37,7 +119,7 @@ This is the simplest architecture that provides:
 The generated native process is a protocol adapter around the emitted model. It
 is not an independent copy of the hardware description.
 
-## 2. End-to-end flow
+### 2. End-to-end flow
 
 The complete lifecycle is:
 
@@ -80,7 +162,7 @@ Each `Sim.step()` call ultimately causes Java to send `step`; Java does not
 directly manipulate the MLIR state. Each output read causes Java to send `read`;
 Java does not parse LLVM or execute it itself.
 
-## 3. Configuration
+### 3. Configuration
 
 `ArcilatorConfig` contains:
 
@@ -98,10 +180,8 @@ When the build directory is omitted, Arcilator configs use
 `build/doppio-verilator/<top-module>`. Both backends create their build
 directory before writing generated files. Existing constructors that accept
 an explicit build directory remain available. The convenience constructors
-default the clock port to `clock` for Arcilator and `clk` for Verilator; callers
+default the clock port to `clock` for Arcilator; callers
 can still supply a different name.
-
-The port records are deliberately similar to `VerilatorConfig`:
 
 ```java
 ArcilatorConfig config = new ArcilatorConfig(Path.of("src/mlir/Accumulator.mlir"));
@@ -121,7 +201,7 @@ and output ports discovered from Arcilator's generated state metadata. A
 non-empty list remains an optional subset declaration, and its names, direction,
 and widths are validated against that metadata.
 
-## 4. Constructor flow
+### 4. Constructor flow
 
 The constructor performs all expensive setup:
 
@@ -137,9 +217,9 @@ The constructor performs all expensive setup:
 This separation is important: all later `read`, `write`, `previous`, and `step`
 calls only communicate with an already-running process.
 
-## 5. Build pipeline
+### 5. Build pipeline
 
-### 5.1 MLIR lowering
+#### 5.1 MLIR lowering
 
 `buildSimulation()` asks Arcilator to generate port-aware state metadata:
 
@@ -177,7 +257,7 @@ The offsets come from the lowering pipeline. They must not be guessed in Java.
 The JSON is an internal state discovery mechanism used to bind names to byte
 offsets.
 
-### 5.2 State JSON parsing
+#### 5.2 State JSON parsing
 
 `parseStateFile()` reads:
 
@@ -194,7 +274,7 @@ only for this constrained, tool-generated JSON structure.
 If no output is present, the backend throws an error rather than silently
 building a model with no observable values.
 
-### 5.3 C++ harness generation
+#### 5.3 C++ harness generation
 
 `harnessSource()` writes C++ source at runtime using Java `StringBuilder`.
 It declares and calls a generated function with the model name:
@@ -219,7 +299,7 @@ The generated C++:
 
 The C++ harness is an adapter, not a second simulation implementation.
 
-### 5.4 Native compilation
+#### 5.4 Native compilation
 
 The LLVM lowering is first compiled by `clang++`:
 
@@ -245,7 +325,7 @@ The executable is placed at:
 All commands run with merged diagnostics. If compilation fails, Java includes
 the external tool output in `IllegalStateException`.
 
-## 6. Java/native protocol
+### 6. Java/native protocol
 
 After construction, Java and C++ communicate on process stdin/stdout.
 
@@ -266,46 +346,7 @@ OK <hex-value>
 ERR <message>
 ```
 
-### 6.1 Java command sender
-
-`command()` does four important operations:
-
-1. writes the command to `BufferedWriter`;
-2. calls `newLine()` and `flush()`;
-3. reads exactly one response line;
-4. translates the response into `BigInteger`, success, or an exception.
-
-`OK` returns `BigInteger.ZERO` internally. This is only an implementation
-convenient for methods that do not return values.
-
-`OK <hex>` creates:
-
-```java
-new BigInteger(hex, 16)
-```
-
-`ERR <message>` and unexpected text become `IllegalStateException`.
-An EOF from the process becomes an error mentioning the failed command.
-
-There is no background protocol thread. Reads block Java until C++ has completed
-the operation and flushed a response.
-
-### 6.2 C++ protocol receiver
-
-The C++ `main()` function:
-
-```cpp
-while (std::cin >> command) {
-    // handle read, write, step, or finish
-}
-```
-
-It never writes diagnostics to stdout. Every protocol result is a single line
-beginning with `OK` or `ERR`, preventing diagnostic text from corrupting reads.
-
-The native process intentionally remains alive after each command.
-
-## 7. State access and offsets
+### 7. State access and offsets
 
 For a port at offset `O` and width `W`, C++ reads its storage at:
 
@@ -315,42 +356,7 @@ state[O .. O + ceil(W / 8) - 1]
 
 State is read least-significant byte first.
 
-### 7.1 Reading
-
-`read_bits(offset, width, hex)`:
-
-1. calculates the number of bytes;
-2. walks bytes from most significant to least significant;
-3. removes leading zero bytes;
-4. adds two hex digits for complete following bytes;
-5. masks a partially used final byte;
-6. returns `"0"` if no bits are set.
-
-Java then parses the result as a hexadecimal `BigInteger`.
-
-### 7.2 Writing
-
-`write(port, BigInteger)` in Java:
-
-1. confirms the port exists;
-2. confirms it is an input;
-3. rejects negative values;
-4. rejects values not fitting the configured width;
-5. converts the value to hexadecimal text;
-6. sends `write <name> <hex>`.
-
-The C++ side:
-
-1. validates the hexadecimal characters;
-2. pads to the configured byte width;
-3. converts pairs of hex digits to bytes;
-4. writes those bytes at the state offset;
-5. masks partial bytes for non-byte-aligned widths.
-
-The Java width validation is the main user-facing guard. C++ padding is a
-second guard at the native boundary.
-
-## 8. Clock and `step()` semantics
+### 8. Clock and `step()` semantics
 
 The backend assumes one explicitly configured clock port.
 
@@ -382,7 +388,7 @@ The default primary clock name is `clock`; users can override it with
 `ArcilatorConfig.clockPort`. The current implementation does not support
 several independent clock domains.
 
-## 9. Generated build artifacts
+### 9. Generated build artifacts
 
 For the accumulator, the build directory contains:
 
@@ -401,7 +407,7 @@ These files make each stage inspectable:
 * C++ explains protocol behavior;
 * object/executable are the final native simulation.
 
-## 10. Limitations
+### 10. Limitations
 
 Compared with `VerilatorBackend`, the current Arcilator backend has:
 
@@ -415,7 +421,7 @@ Compared with `VerilatorBackend`, the current Arcilator backend has:
 It does, however, keep test code independent of the underlying backend:
 the same `Sim`, `InPort`, `OutPort`, and `step()` operations are used.
 
-## 11. Design tradeoffs
+### 11. Design tradeoffs
 
 Arcilator JIT `--run` is batch-oriented and is unsuitable for persistent
 interactive `read`/`write` calls. Directly spawning `arcilator --run` after every
