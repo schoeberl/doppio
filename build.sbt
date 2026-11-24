@@ -22,5 +22,8 @@ libraryDependencies += "org.chipsalliance" %% "chisel" % chiselVersion
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
 
 name := "doppio"
+organization := "com.dtu"
+version := "0.1.0"
+
 Compile / javacOptions ++= Seq("-Xlint:all", "-Werror")
 Test / javacOptions ++= Seq("-Xlint:all", "-Werror")
