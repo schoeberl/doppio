@@ -61,6 +61,25 @@ Run the Verilog accumulator through Verilator from plain Java:
 sbt "runMain doppio.examples.TestAccumulator"
 ```
 
+Run the MLIR accumulator through Arcilator from plain Java:
+
+```sh
+sbt "runMain doppio.examples.TestArcilatorAccumulator"
+```
+
+### Arcilator architecture
+
+The Arcilator backend exports model state metadata with `--state-file`, lowers
+the MLIR to LLVM IR with `--emit-llvm`, and compiles a small C++ protocol
+driver around the generated model. The driver remains alive as a child process;
+Java sends `read`, `write`, `step`, and `finish` commands, matching the
+`VerilatorBackend` protocol shape. Port metadata remains authoritative in Java
+and is validated against Arcilator's generated input/output state metadata.
+
+Each Doppio step drives the clock low, evaluates, drives it high, evaluates,
+and drives it low again. The initial implementation supports one explicitly
+configured clock domain. It does not provide a native VCD trace yet.
+
 Run the same accumulator test with a typed Java helper class around the DUT interface:
 
 ```sh

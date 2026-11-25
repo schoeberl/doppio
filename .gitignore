@@ -1,5 +1,7 @@
 target/
 project/target/
+project/project/
+metals.sbt
 build/
 .bloop/
 .metals/

@@ -1,5 +1,6 @@
-package doppio.backend;
+package doppio.backend.verilator;
 
+import doppio.backend.SimulatorBackend;
 import java.math.BigInteger;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

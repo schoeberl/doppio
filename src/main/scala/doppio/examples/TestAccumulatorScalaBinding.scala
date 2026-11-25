@@ -1,7 +1,7 @@
 package doppio.examples
 
 import doppio.Sim
-import doppio.backend.{VerilatorBackend, VerilatorConfig}
+import doppio.backend.verilator.{VerilatorBackend, VerilatorConfig}
 import doppio.scaladsl._
 
 import java.nio.file.Path
